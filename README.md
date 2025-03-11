@@ -31,17 +31,17 @@ This enables LLMs to:
 
 This structured approach ensures that the LLM can effectively manage software development tasks while maintaining clear communication with human team members through the Kanban board.
 
-## Quick Start with Docker Compose
+## Quick Start
 
-The easiest way to get started is using Docker Compose, which will set up:
-1. Planka Kanban board
-2. PostgreSQL database
-3. MCP Kanban server
+The setup process involves two main components:
+1. Planka Kanban board (with PostgreSQL database)
+2. MCP Kanban server
 
 ### Prerequisites
 
-- Docker and Docker Compose installed on your system
+- Docker installed on your system
 - Git (to clone this repository)
+- Node.js and npm (for development)
 
 ### Setup
 
@@ -55,14 +55,17 @@ The easiest way to get started is using Docker Compose, which will set up:
    - The default configuration is in the `.env` file
    - Modify any values as needed (ports, credentials, etc.)
 
-3. Start the services:
+3. Build the MCP Kanban server and start Planka:
    ```bash
-   docker-compose up -d
+   # Build the TypeScript code and create a Docker image
+   npm run build-docker
+   
+   # Start only the Planka containers (kanban and postgres)
+   npm run up
    ```
 
-4. Access the services:
-   - Planka Kanban board: http://localhost:3000
-   - MCP Kanban server: http://localhost:3008
+4. Access the Planka Kanban board:
+   - Default URL: http://localhost:3333 (or the port specified in your .env file)
 
 ### Default Credentials
 
@@ -76,15 +79,16 @@ The easiest way to get started is using Docker Compose, which will set up:
 You can customize the setup by modifying the `.env` file:
 
 #### Planka Configuration
-- `PLANKA_PORT`: Port for the Planka web interface (default: 3000)
-- `BASE_URL`: Public URL for Planka (default: http://localhost:3000)
+- `PLANKA_PORT`: Port for the Planka web interface (default: 3333)
+- `BASE_URL`: Public URL for Planka (default: http://localhost:3333)
 - `TRUST_PROXY`: Whether to trust proxy headers (default: 1)
 - `SECRET_KEY`: Secret key for session encryption (default: secretkey)
 
 #### Admin User
-- `ADMIN_EMAIL`: Email for the admin user (default: demo@demo.demo)
-- `ADMIN_PASSWORD`: Password for the admin user (default: demo)
-- `ADMIN_NAME`: Name for the admin user (default: Demo User)
+- `PLANKA_ADMIN_EMAIL`: Email for the admin user (default: demo@demo.demo)
+- `PLANKA_ADMIN_PASSWORD`: Password for the admin user (default: demo)
+- `PLANKA_ADMIN_NAME`: Name for the admin user (default: Demo User)
+- `PLANKA_ADMIN_USERNAME`: Username for the admin user (default: demo)
 
 #### PostgreSQL Configuration
 - `POSTGRES_USER`: PostgreSQL username (default: postgres)
@@ -93,9 +97,79 @@ You can customize the setup by modifying the `.env` file:
 
 #### MCP-Kanban Configuration
 - `MCP_KANBAN_PORT`: Port for the MCP Kanban server (default: 3008)
-- `PLANKA_BASE_URL`: URL for the Planka API (default: http://planka:3000)
+- `PLANKA_BASE_URL`: URL for the Planka API (default: http://planka:${PLANKA_PORT})
 - `PLANKA_AGENT_EMAIL`: Email for the Planka agent (default: same as admin)
 - `PLANKA_AGENT_PASSWORD`: Password for the Planka agent (default: same as admin)
+
+## Running the MCP Server with Cursor
+
+To use the MCP Kanban server with Cursor, you need to add it as an MCP server in Cursor's settings:
+
+1. First, build the MCP Kanban server:
+   ```bash
+   npm run build-docker
+   ```
+
+2. In Cursor, go to `Cursor Settings` > `Features` > `MCP` and click on the `+ Add New MCP Server` button.
+
+3. Fill out the form:
+   - **Name**: Enter a nickname for the server (e.g., "Kanban MCP")
+   - **Type**: Select "stdio" as the transport
+   - **Command**: Enter the command to run the Docker container:
+     ```
+     docker run -i --rm -e PLANKA_BASE_URL=http://host.docker.internal:3333 -e PLANKA_ADMIN_ID=1460688047300412417 -e PLANKA_AGENT_EMAIL=claude-kanban-mcp@cursor.com -e PLANKA_AGENT_PASSWORD=supersupersecre mcp-kanban:latest
+     ```
+
+4. Click "Add" to save the MCP server configuration.
+
+5. The server should appear in the list of MCP servers. You may need to press the refresh button in the top right corner of the MCP server entry to populate the tool list.
+
+### Project-specific MCP Configuration
+
+Alternatively, you can configure the MCP server for a specific project using `.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "kanban": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "PLANKA_BASE_URL=http://host.docker.internal:3333",
+        "-e",
+        "PLANKA_ADMIN_ID=1460688047300412417",
+        "-e",
+        "PLANKA_AGENT_EMAIL=claude-kanban-mcp@cursor.com",
+        "-e",
+        "PLANKA_AGENT_PASSWORD=supersupersecre",
+        "mcp-kanban:latest"
+      ]
+    }
+  }
+}
+```
+
+### Important Configuration Notes
+
+When configuring the Docker command:
+
+1. Use the correct port in `PLANKA_BASE_URL` (matching your .env file)
+2. Use `host.docker.internal` instead of `localhost` to access the host from within the container
+3. Provide the correct admin credentials
+4. Use the correct image tag (typically `latest` or matching your package.json version)
+
+## Available npm Scripts
+
+- `npm run build`: Build the TypeScript code
+- `npm run build-docker`: Build the TypeScript code and create a Docker image
+- `npm run up`: Start the Planka containers (kanban and postgres)
+- `npm run down`: Stop all containers
+- `npm run restart`: Restart the Planka containers
+- `npm run inspector`: Run the MCP Inspector for local development
+- `npm run inspector:demo`: Run the MCP Inspector with demo credentials
 
 ## Development
 
@@ -115,7 +189,7 @@ To run the services locally without Docker:
 
 3. Start the MCP server:
    ```bash
-   SERVER_PORT=3008 PLANKA_BASE_URL=http://localhost:3000 PLANKA_AGENT_EMAIL=demo@demo.demo PLANKA_AGENT_PASSWORD=demo node dist/index.js
+   SERVER_PORT=3008 PLANKA_BASE_URL=http://localhost:3333 PLANKA_AGENT_EMAIL=demo@demo.demo PLANKA_AGENT_PASSWORD=demo node dist/index.js
    ```
 
 ### Using the Inspector
@@ -134,34 +208,6 @@ When using Docker, keep these points in mind:
 2. Environment variables must be explicitly set in the Docker command args with values
 3. The MCP server needs to be rebuilt after TypeScript changes
 4. For attachments, mount a volume to `/app/attachments` in your Docker container
-
-## Running Planka
-
-This project includes a Dockerfile for running Planka, the Kanban board application that MCP Kanban interacts with.
-
-### Using the Planka Dockerfile
-
-To build and run Planka using the provided Dockerfile:
-
-```bash
-# Build the Planka Docker image
-npm run planka:build
-
-# Run the Planka container
-npm run planka:run
-```
-
-This will start Planka on port 3000. You can then access it at http://localhost:3000.
-
-Default credentials:
-- Email: demo@demo.demo
-- Password: demo
-
-To stop the Planka container:
-
-```bash
-npm run planka:stop
-```
 
 ## Development Methodology
 

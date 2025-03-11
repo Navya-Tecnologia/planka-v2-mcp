@@ -53,7 +53,8 @@ export async function getCardDetails(params: GetCardDetailsParams) {
         let boardId = null;
 
         // Get all projects
-        const projects = await getProjects(1, 100);
+        const projectsResponse = await getProjects(1, 100);
+        const projects = projectsResponse.items;
 
         // For each project, get its boards
         for (const project of projects) {
@@ -113,8 +114,8 @@ export async function getCardDetails(params: GetCardDetailsParams) {
 
         return {
             card,
-            tasks: {
-                items: tasks,
+            taskItems: tasks,
+            taskStats: {
                 total: totalTasks,
                 completed: completedTasks,
                 completionPercentage,
