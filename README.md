@@ -152,6 +152,19 @@ Alternatively, you can configure the MCP server for a specific project using `.c
 }
 ```
 
+### Configuring Rules for LLMs
+
+To help LLMs understand how to use the MCP Kanban server effectively, create a `.cursorrules` file in your project root by copying the rules from the provided `EXAMPLE_RULE.md` file:
+
+The rules in `EXAMPLE_RULE.md` include guidelines for:
+- Checking the board state before starting work
+- Following the Kanban workflow (Backlog → In Progress → Testing → Done)
+- Completing tasks sequentially within cards
+- Documenting progress with comments
+- Handling testing and feedback
+
+These rules guide the LLM in using the MCP Kanban tools according to the task-oriented development methodology.
+
 ### Important Configuration Notes
 
 When configuring the Docker command:
@@ -212,8 +225,6 @@ When using Docker, keep these points in mind:
 ## Development Methodology
 
 This project includes a guide for implementing a task-oriented Kanban development approach. This methodology is designed to help teams effectively use Kanban boards for structured software development, with or without LLM assistance.
-
-See [KANBAN_DEVELOPMENT_GUIDE.md](./KANBAN_DEVELOPMENT_GUIDE.md) for detailed instructions on implementing this approach in your development workflow.
 
 ## License
 
