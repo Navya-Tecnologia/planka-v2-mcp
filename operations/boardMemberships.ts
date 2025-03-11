@@ -1,7 +1,21 @@
+/**
+ * @fileoverview Board membership operations for the MCP Kanban server
+ *
+ * This module provides functions for managing board memberships in the Planka Kanban system,
+ * including creating, retrieving, updating, and deleting board memberships, which control
+ * user access and permissions to boards.
+ */
+
 import { z } from "zod";
 import { plankaRequest } from "../common/utils.js";
 
 // Schema definitions
+/**
+ * Schema for creating a new board membership
+ * @property {string} boardId - The ID of the board to add the user to
+ * @property {string} userId - The ID of the user to add to the board
+ * @property {string} role - The role of the user on the board (editor or viewer)
+ */
 export const CreateBoardMembershipSchema = z.object({
     boardId: z.string().describe("Board ID"),
     userId: z.string().describe("User ID"),
@@ -10,14 +24,28 @@ export const CreateBoardMembershipSchema = z.object({
     ),
 });
 
+/**
+ * Schema for retrieving board memberships
+ * @property {string} boardId - The ID of the board to get memberships for
+ */
 export const GetBoardMembershipsSchema = z.object({
     boardId: z.string().describe("Board ID"),
 });
 
+/**
+ * Schema for retrieving a specific board membership
+ * @property {string} id - The ID of the board membership to retrieve
+ */
 export const GetBoardMembershipSchema = z.object({
     id: z.string().describe("Board Membership ID"),
 });
 
+/**
+ * Schema for updating a board membership
+ * @property {string} id - The ID of the board membership to update
+ * @property {string} role - The new role for the user (editor or viewer)
+ * @property {boolean} [canComment] - Whether the user can comment on cards
+ */
 export const UpdateBoardMembershipSchema = z.object({
     id: z.string().describe("Board Membership ID"),
     role: z.enum(["editor", "viewer"]).describe(
@@ -28,14 +56,25 @@ export const UpdateBoardMembershipSchema = z.object({
     ),
 });
 
+/**
+ * Schema for deleting a board membership
+ * @property {string} id - The ID of the board membership to delete
+ */
 export const DeleteBoardMembershipSchema = z.object({
     id: z.string().describe("Board Membership ID"),
 });
 
 // Type exports
+/**
+ * Type definition for board membership creation options
+ */
 export type CreateBoardMembershipOptions = z.infer<
     typeof CreateBoardMembershipSchema
 >;
+
+/**
+ * Type definition for board membership update options
+ */
 export type UpdateBoardMembershipOptions = z.infer<
     typeof UpdateBoardMembershipSchema
 >;
@@ -63,6 +102,16 @@ const BoardMembershipResponseSchema = z.object({
 });
 
 // Function implementations
+/**
+ * Creates a new board membership (adds a user to a board with specified permissions)
+ *
+ * @param {CreateBoardMembershipOptions} options - Options for creating the board membership
+ * @param {string} options.boardId - The ID of the board to add the user to
+ * @param {string} options.userId - The ID of the user to add to the board
+ * @param {string} options.role - The role of the user on the board (editor or viewer)
+ * @returns {Promise<object>} The created board membership
+ * @throws {Error} If the board membership creation fails
+ */
 export async function createBoardMembership(
     options: CreateBoardMembershipOptions,
 ) {
@@ -88,6 +137,13 @@ export async function createBoardMembership(
     }
 }
 
+/**
+ * Retrieves all memberships for a specific board
+ *
+ * @param {string} boardId - The ID of the board to get memberships for
+ * @returns {Promise<Array<object>>} Array of board memberships
+ * @throws {Error} If retrieving board memberships fails
+ */
 export async function getBoardMemberships(boardId: string) {
     try {
         const response = await plankaRequest(
@@ -119,6 +175,13 @@ export async function getBoardMemberships(boardId: string) {
     }
 }
 
+/**
+ * Retrieves a specific board membership by ID
+ *
+ * @param {string} id - The ID of the board membership to retrieve
+ * @returns {Promise<object>} The requested board membership
+ * @throws {Error} If retrieving the board membership fails
+ */
 export async function getBoardMembership(id: string) {
     try {
         const response = await plankaRequest(`/api/board-memberships/${id}`);
@@ -133,6 +196,16 @@ export async function getBoardMembership(id: string) {
     }
 }
 
+/**
+ * Updates a board membership's properties (user permissions on a board)
+ *
+ * @param {string} id - The ID of the board membership to update
+ * @param {Partial<Omit<CreateBoardMembershipOptions, "boardId" | "userId">>} options - The properties to update
+ * @param {string} [options.role] - The new role for the user (editor or viewer)
+ * @param {boolean} [options.canComment] - Whether the user can comment on cards
+ * @returns {Promise<object>} The updated board membership
+ * @throws {Error} If updating the board membership fails
+ */
 export async function updateBoardMembership(
     id: string,
     options: Partial<Omit<CreateBoardMembershipOptions, "boardId" | "userId">>,
@@ -153,6 +226,13 @@ export async function updateBoardMembership(
     }
 }
 
+/**
+ * Deletes a board membership by ID (removes a user from a board)
+ *
+ * @param {string} id - The ID of the board membership to delete
+ * @returns {Promise<{success: boolean}>} Success indicator
+ * @throws {Error} If deleting the board membership fails
+ */
 export async function deleteBoardMembership(id: string) {
     try {
         await plankaRequest(`/api/board-memberships/${id}`, {

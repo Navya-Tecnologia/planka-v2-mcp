@@ -3,14 +3,35 @@ import { getCard } from "../operations/cards.js";
 import { getTasks } from "../operations/tasks.js";
 import { getComments } from "../operations/comments.js";
 import { getLabels } from "../operations/labels.js";
+import { getProjects } from "../operations/projects.js";
+import { getBoards } from "../operations/boards.js";
 import { getLists } from "../operations/lists.js";
 
+/**
+ * Zod schema for the getCardDetails function parameters
+ * @property {string} cardId - The ID of the card to get details for
+ */
 export const getCardDetailsSchema = z.object({
     cardId: z.string().describe("The ID of the card to get details for"),
 });
 
+/**
+ * Type definition for getCardDetails parameters
+ */
 export type GetCardDetailsParams = z.infer<typeof getCardDetailsSchema>;
 
+/**
+ * Retrieves comprehensive details about a card including tasks, comments, labels, and analysis
+ *
+ * This function aggregates data from multiple sources to provide a complete view of a card,
+ * including its tasks, comments, and labels. It also calculates task completion percentage
+ * and performs analysis on the card's status.
+ *
+ * @param {GetCardDetailsParams} params - Parameters for retrieving card details
+ * @param {string} params.cardId - The ID of the card to get details for
+ * @returns {Promise<object>} Comprehensive card details including tasks, comments, labels, and analysis
+ * @throws {Error} If the card is not found or if the board ID cannot be determined
+ */
 export async function getCardDetails(params: GetCardDetailsParams) {
     const { cardId } = params;
 
@@ -28,11 +49,35 @@ export async function getCardDetails(params: GetCardDetailsParams) {
         // Get comments for the card
         const comments = await getComments(card.id);
 
-        // Get labels for the card's board
-        // Note: We need to get the board ID from the card's listId
-        // First, get the list to find its boardId
-        const list = await getLists(card.listId);
-        const boardId = list[0]?.boardId;
+        // Find the board ID by searching through all projects and boards
+        let boardId = null;
+
+        // Get all projects
+        const projects = await getProjects(1, 100);
+
+        // For each project, get its boards
+        for (const project of projects) {
+            if (boardId) break; // Stop if we already found the board ID
+
+            const boards = await getBoards(project.id);
+
+            // For each board, get its lists
+            for (const board of boards) {
+                if (boardId) break; // Stop if we already found the board ID
+
+                const lists = await getLists(board.id);
+
+                // Check if the card's list ID is in this board
+                const matchingList = lists.find((list: any) =>
+                    list.id === card.listId
+                );
+
+                if (matchingList) {
+                    boardId = board.id;
+                    break;
+                }
+            }
+        }
 
         if (!boardId) {
             throw new Error(`Could not determine board ID for card ${cardId}`);

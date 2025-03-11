@@ -1,27 +1,58 @@
+/**
+ * @fileoverview Task operations for the MCP Kanban server
+ *
+ * This module provides functions for interacting with tasks in the Planka Kanban board,
+ * including creating, retrieving, updating, and deleting tasks, as well as batch operations.
+ */
+
 import { z } from "zod";
 import { plankaRequest } from "../common/utils.js";
 import { PlankaTaskSchema } from "../common/types.js";
 
 // Schema definitions
+/**
+ * Schema for creating a new task
+ * @property {string} cardId - The ID of the card to create the task in
+ * @property {string} name - The name of the task
+ * @property {number} [position] - The position of the task in the card (default: 65535)
+ */
 export const CreateTaskSchema = z.object({
     cardId: z.string().describe("Card ID"),
     name: z.string().describe("Task name"),
     position: z.number().optional().describe("Task position (default: 65535)"),
 });
 
-// New schema for batch task creation
+/**
+ * Schema for batch creating multiple tasks
+ * @property {Array<CreateTaskSchema>} tasks - Array of tasks to create
+ */
 export const BatchCreateTasksSchema = z.object({
     tasks: z.array(CreateTaskSchema).describe("Array of tasks to create"),
 });
 
+/**
+ * Schema for retrieving tasks from a card
+ * @property {string} cardId - The ID of the card to get tasks from
+ */
 export const GetTasksSchema = z.object({
     cardId: z.string().describe("Card ID"),
 });
 
+/**
+ * Schema for retrieving a specific task
+ * @property {string} id - The ID of the task to retrieve
+ */
 export const GetTaskSchema = z.object({
     id: z.string().describe("Task ID"),
 });
 
+/**
+ * Schema for updating a task
+ * @property {string} id - The ID of the task to update
+ * @property {string} [name] - The new name for the task
+ * @property {boolean} [isCompleted] - Whether the task is completed
+ * @property {number} [position] - The new position for the task
+ */
 export const UpdateTaskSchema = z.object({
     id: z.string().describe("Task ID"),
     name: z.string().optional().describe("Task name"),
@@ -31,13 +62,28 @@ export const UpdateTaskSchema = z.object({
     position: z.number().optional().describe("Task position"),
 });
 
+/**
+ * Schema for deleting a task
+ * @property {string} id - The ID of the task to delete
+ */
 export const DeleteTaskSchema = z.object({
     id: z.string().describe("Task ID"),
 });
 
 // Type exports
+/**
+ * Type definition for task creation options
+ */
 export type CreateTaskOptions = z.infer<typeof CreateTaskSchema>;
+
+/**
+ * Type definition for batch task creation options
+ */
 export type BatchCreateTasksOptions = z.infer<typeof BatchCreateTasksSchema>;
+
+/**
+ * Type definition for task update options
+ */
 export type UpdateTaskOptions = z.infer<typeof UpdateTaskSchema>;
 
 // Response schemas
@@ -52,6 +98,16 @@ const TaskResponseSchema = z.object({
 });
 
 // Function implementations
+/**
+ * Creates a new task in a card
+ *
+ * @param {CreateTaskOptions} options - Options for creating the task
+ * @param {string} options.cardId - The ID of the card to create the task in
+ * @param {string} options.name - The name of the task
+ * @param {number} [options.position] - The position of the task in the card (default: 65535)
+ * @returns {Promise<object>} The created task
+ * @throws {Error} If the task creation fails
+ */
 export async function createTask(options: CreateTaskOptions) {
     try {
         const response = await plankaRequest(
@@ -75,52 +131,75 @@ export async function createTask(options: CreateTaskOptions) {
     }
 }
 
-// New function for batch task creation
+/**
+ * Creates multiple tasks for cards in a single operation
+ *
+ * @param {BatchCreateTasksOptions} options - Options for batch creating tasks
+ * @param {Array<CreateTaskOptions>} options.tasks - Array of tasks to create
+ * @returns {Promise<{successes: Array<object>, failures: Array<TaskError>}>} Results of the batch operation
+ * @throws {Error} If the batch operation fails completely
+ */
 export async function batchCreateTasks(options: BatchCreateTasksOptions) {
     try {
-        // Define proper types for results and errors
+        const results: Array<any> = [];
+        const errors: Array<any> = [];
+
+        /**
+         * Interface for task operation result
+         * @property {boolean} success - Whether the operation was successful
+         * @property {any} [result] - The result of the operation if successful
+         * @property {object} [error] - The error if the operation failed
+         * @property {string} error.message - The error message
+         */
         interface TaskResult {
             success: boolean;
             result?: any;
             error?: { message: string };
         }
 
+        /**
+         * Interface for task operation error
+         * @property {number} index - The index of the task in the original array
+         * @property {CreateTaskOptions} task - The task that failed
+         * @property {string} error - The error message
+         */
         interface TaskError {
             index: number;
             task: CreateTaskOptions;
             error: string;
         }
 
-        const results: TaskResult[] = [];
-        const errors: TaskError[] = [];
-
-        // Process tasks in parallel for better performance
-        const taskPromises = options.tasks.map(async (task, index) => {
+        // Process each task in sequence
+        for (let i = 0; i < options.tasks.length; i++) {
+            const task = options.tasks[i];
             try {
                 const result = await createTask(task);
-                results[index] = { success: true, result };
+                results.push({
+                    success: true,
+                    result,
+                });
             } catch (error) {
                 const errorMessage = error instanceof Error
                     ? error.message
                     : String(error);
-                results[index] = {
+                results.push({
                     success: false,
                     error: { message: errorMessage },
-                };
-                errors.push({ index, task, error: errorMessage });
+                });
+                errors.push({
+                    index: i,
+                    task,
+                    error: errorMessage,
+                });
             }
-        });
-
-        await Promise.all(taskPromises);
+        }
 
         return {
             results,
-            summary: {
-                total: options.tasks.length,
-                succeeded: results.filter((r) => r.success).length,
-                failed: errors.length,
-                errors: errors.length > 0 ? errors : undefined,
-            },
+            successes: results.filter((r: TaskResult) => r.success).map(
+                (r: TaskResult) => r.result,
+            ),
+            failures: errors as TaskError[],
         };
     } catch (error) {
         throw new Error(
@@ -131,175 +210,63 @@ export async function batchCreateTasks(options: BatchCreateTasksOptions) {
     }
 }
 
+/**
+ * Retrieves all tasks for a specific card
+ *
+ * @param {string} cardId - The ID of the card to get tasks from
+ * @returns {Promise<Array<object>>} Array of tasks in the card
+ */
 export async function getTasks(cardId: string) {
     try {
-        // First, we need to get the card to find its boardId
-        const cardResponse = await plankaRequest(`/api/cards/${cardId}`);
-
-        if (
-            !cardResponse || typeof cardResponse !== "object" ||
-            !("item" in cardResponse)
-        ) {
-            return [];
-        }
-
-        const card = cardResponse.item;
-        if (!card || typeof card !== "object" || !("boardId" in card)) {
-            return [];
-        }
-
-        const boardId = card.boardId;
-
-        // Now get the board which includes tasks in the response
-        const boardResponse = await plankaRequest(`/api/boards/${boardId}`);
-
-        // Check if the response has the expected structure
-        if (
-            boardResponse &&
-            typeof boardResponse === "object" &&
-            "included" in boardResponse &&
-            boardResponse.included &&
-            typeof boardResponse.included === "object" &&
-            "tasks" in (boardResponse.included as Record<string, unknown>)
-        ) {
-            // Get the tasks from the included property
-            const allTasks =
-                (boardResponse.included as Record<string, unknown>).tasks;
-            if (Array.isArray(allTasks)) {
-                // Filter tasks by cardId
-                const filteredTasks = allTasks.filter((task) =>
-                    typeof task === "object" &&
-                    task !== null &&
-                    "cardId" in task &&
-                    task.cardId === cardId
-                );
-                return filteredTasks;
-            }
-        }
-
-        // If we can't find tasks in the expected format, return an empty array
-        return [];
+        const response = await plankaRequest(`/api/cards/${cardId}/tasks`);
+        const parsedResponse = TasksResponseSchema.parse(response);
+        return parsedResponse.items;
     } catch (error) {
-        // If all else fails, return an empty array
+        // If there's an error, return an empty array
         return [];
     }
 }
 
+/**
+ * Retrieves a specific task by ID
+ *
+ * @param {string} id - The ID of the task to retrieve
+ * @returns {Promise<object>} The requested task
+ */
 export async function getTask(id: string) {
-    try {
-        // Get all projects which includes boards
-        const projectsResponse = await plankaRequest(`/api/projects`);
-
-        if (
-            !projectsResponse ||
-            typeof projectsResponse !== "object" ||
-            !("included" in projectsResponse) ||
-            !projectsResponse.included ||
-            typeof projectsResponse.included !== "object"
-        ) {
-            throw new Error("Failed to get projects");
-        }
-
-        const included = projectsResponse.included as Record<string, unknown>;
-
-        // Get all boards
-        if (!("boards" in included) || !Array.isArray(included.boards)) {
-            throw new Error("No boards found");
-        }
-
-        const boards = included.boards;
-
-        // Check each board for the task
-        for (const board of boards) {
-            if (
-                typeof board !== "object" || board === null || !("id" in board)
-            ) {
-                continue;
-            }
-
-            const boardId = board.id as string;
-
-            // Get the board details which includes tasks
-            const boardResponse = await plankaRequest(`/api/boards/${boardId}`);
-
-            if (
-                !boardResponse ||
-                typeof boardResponse !== "object" ||
-                !("included" in boardResponse) ||
-                !boardResponse.included ||
-                typeof boardResponse.included !== "object"
-            ) {
-                continue;
-            }
-
-            const boardIncluded = boardResponse.included as Record<
-                string,
-                unknown
-            >;
-
-            if (
-                !("tasks" in boardIncluded) ||
-                !Array.isArray(boardIncluded.tasks)
-            ) {
-                continue;
-            }
-
-            const tasks = boardIncluded.tasks;
-
-            // Find the task with the matching ID
-            const task = tasks.find((task) =>
-                typeof task === "object" &&
-                task !== null &&
-                "id" in task &&
-                task.id === id
-            );
-
-            if (task) {
-                return task;
-            }
-        }
-
-        throw new Error(`Task not found: ${id}`);
-    } catch (error) {
-        throw new Error(
-            `Failed to get task: ${
-                error instanceof Error ? error.message : String(error)
-            }`,
-        );
-    }
+    const response = await plankaRequest(`/api/tasks/${id}`);
+    const parsedResponse = TaskResponseSchema.parse(response);
+    return parsedResponse.item;
 }
 
+/**
+ * Updates a task's properties
+ *
+ * @param {string} id - The ID of the task to update
+ * @param {Partial<Omit<CreateTaskOptions, "cardId">>} options - The properties to update
+ * @returns {Promise<object>} The updated task
+ */
 export async function updateTask(
     id: string,
     options: Partial<Omit<CreateTaskOptions, "cardId">>,
 ) {
-    try {
-        const response = await plankaRequest(`/api/tasks/${id}`, {
-            method: "PATCH",
-            body: options,
-        });
-        const parsedResponse = TaskResponseSchema.parse(response);
-        return parsedResponse.item;
-    } catch (error) {
-        throw new Error(
-            `Failed to update task: ${
-                error instanceof Error ? error.message : String(error)
-            }`,
-        );
-    }
+    const response = await plankaRequest(`/api/tasks/${id}`, {
+        method: "PATCH",
+        body: options,
+    });
+    const parsedResponse = TaskResponseSchema.parse(response);
+    return parsedResponse.item;
 }
 
+/**
+ * Deletes a task by ID
+ *
+ * @param {string} id - The ID of the task to delete
+ * @returns {Promise<{success: boolean}>} Success indicator
+ */
 export async function deleteTask(id: string) {
-    try {
-        await plankaRequest(`/api/tasks/${id}`, {
-            method: "DELETE",
-        });
-        return { success: true };
-    } catch (error) {
-        throw new Error(
-            `Failed to delete task: ${
-                error instanceof Error ? error.message : String(error)
-            }`,
-        );
-    }
+    await plankaRequest(`/api/tasks/${id}`, {
+        method: "DELETE",
+    });
+    return { success: true };
 }

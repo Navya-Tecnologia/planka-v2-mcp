@@ -207,6 +207,20 @@ server.tool(
   },
 );
 
+server.tool(
+  "get_list",
+  "Get a specific list by ID",
+  {
+    id: z.string().describe("The ID of the list to retrieve"),
+  },
+  async (args) => {
+    const result = await lists.getList(args.id);
+    return {
+      content: [{ type: "text", text: JSON.stringify(result) }],
+    };
+  },
+);
+
 // Cards operations
 server.tool(
   "get_cards",

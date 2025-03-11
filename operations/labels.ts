@@ -1,8 +1,18 @@
+/**
+ * @fileoverview Label operations for the MCP Kanban server
+ *
+ * This module provides functions for interacting with labels in the Planka Kanban board,
+ * including creating, retrieving, updating, and deleting labels, as well as
+ * adding and removing labels from cards.
+ */
+
 import { z } from "zod";
 import { plankaRequest } from "../common/utils.js";
 import { PlankaLabelSchema } from "../common/types.js";
 
-// Schema definitions
+/**
+ * Valid color options for labels in Planka
+ */
 export const VALID_LABEL_COLORS = [
     "berry-red",
     "pumpkin-orange",
@@ -31,17 +41,24 @@ export const VALID_LABEL_COLORS = [
     "light-cocoa",
 ] as const;
 
+/**
+ * Schema for creating a new label
+ * @property {string} boardId - The ID of the board to create the label in
+ * @property {string} name - The name of the label
+ * @property {string} color - The color of the label (must be one of the valid colors)
+ * @property {number} [position] - The position of the label in the board (default: 65535)
+ */
 export const CreateLabelSchema = z.object({
     boardId: z.string().describe("Board ID"),
     name: z.string().describe("Label name"),
-    color: z.enum(VALID_LABEL_COLORS).describe(
-        "Label color (one of the valid Planka colors)",
-    ),
-    position: z.number().default(65535).describe(
-        "Label position (default: 65535)",
-    ),
+    color: z.enum(VALID_LABEL_COLORS).describe("Label color"),
+    position: z.number().optional().describe("Label position (default: 65535)"),
 });
 
+/**
+ * Schema for retrieving labels from a board
+ * @property {string} boardId - The ID of the board to get labels from
+ */
 export const GetLabelsSchema = z.object({
     boardId: z.string().describe("Board ID"),
 });
@@ -50,33 +67,67 @@ export const GetLabelSchema = z.object({
     id: z.string().describe("Label ID"),
 });
 
+/**
+ * Schema for updating a label
+ * @property {string} id - The ID of the label to update
+ * @property {string} [name] - The new name for the label
+ * @property {string} [color] - The new color for the label
+ * @property {number} [position] - The new position for the label
+ */
 export const UpdateLabelSchema = z.object({
     id: z.string().describe("Label ID"),
     name: z.string().optional().describe("Label name"),
-    color: z.enum(VALID_LABEL_COLORS).optional().describe(
-        "Label color (one of the valid Planka colors)",
-    ),
+    color: z.enum(VALID_LABEL_COLORS).optional().describe("Label color"),
     position: z.number().optional().describe("Label position"),
 });
 
+/**
+ * Schema for deleting a label
+ * @property {string} id - The ID of the label to delete
+ */
 export const DeleteLabelSchema = z.object({
     id: z.string().describe("Label ID"),
 });
 
+/**
+ * Schema for adding a label to a card
+ * @property {string} cardId - The ID of the card to add the label to
+ * @property {string} labelId - The ID of the label to add to the card
+ */
 export const AddLabelToCardSchema = z.object({
     cardId: z.string().describe("Card ID"),
     labelId: z.string().describe("Label ID"),
 });
 
+/**
+ * Schema for removing a label from a card
+ * @property {string} cardId - The ID of the card to remove the label from
+ * @property {string} labelId - The ID of the label to remove from the card
+ */
 export const RemoveLabelFromCardSchema = z.object({
     cardId: z.string().describe("Card ID"),
     labelId: z.string().describe("Label ID"),
 });
 
 // Type exports
+/**
+ * Type definition for label creation options
+ */
 export type CreateLabelOptions = z.infer<typeof CreateLabelSchema>;
+
+/**
+ * Type definition for label update options
+ */
 export type UpdateLabelOptions = z.infer<typeof UpdateLabelSchema>;
+
+/**
+ * Type definition for adding a label to a card options
+ */
 export type AddLabelToCardOptions = z.infer<typeof AddLabelToCardSchema>;
+
+/**
+ * Type definition for removing a label from a card options
+ */
 export type RemoveLabelFromCardOptions = z.infer<
     typeof RemoveLabelFromCardSchema
 >;
@@ -104,6 +155,17 @@ const CardLabelResponseSchema = z.object({
 });
 
 // Function implementations
+/**
+ * Creates a new label in a board
+ *
+ * @param {CreateLabelOptions} options - Options for creating the label
+ * @param {string} options.boardId - The ID of the board to create the label in
+ * @param {string} options.name - The name of the label
+ * @param {string} options.color - The color of the label
+ * @param {number} [options.position] - The position of the label in the board (default: 65535)
+ * @returns {Promise<object>} The created label
+ * @throws {Error} If the label creation fails
+ */
 export async function createLabel(options: CreateLabelOptions) {
     try {
         const response = await plankaRequest(
@@ -128,6 +190,12 @@ export async function createLabel(options: CreateLabelOptions) {
     }
 }
 
+/**
+ * Retrieves all labels for a specific board
+ *
+ * @param {string} boardId - The ID of the board to get labels from
+ * @returns {Promise<Array<object>>} Array of labels in the board
+ */
 export async function getLabels(boardId: string) {
     try {
         // Get the board which includes labels in the response
@@ -158,6 +226,13 @@ export async function getLabels(boardId: string) {
     }
 }
 
+/**
+ * Updates a label's properties
+ *
+ * @param {string} id - The ID of the label to update
+ * @param {Partial<Omit<CreateLabelOptions, "boardId">>} options - The properties to update
+ * @returns {Promise<object>} The updated label
+ */
 export async function updateLabel(
     id: string,
     options: Partial<Omit<CreateLabelOptions, "boardId">>,
@@ -178,6 +253,12 @@ export async function updateLabel(
     }
 }
 
+/**
+ * Deletes a label by ID
+ *
+ * @param {string} id - The ID of the label to delete
+ * @returns {Promise<{success: boolean}>} Success indicator
+ */
 export async function deleteLabel(id: string) {
     try {
         await plankaRequest(`/api/labels/${id}`, {
@@ -193,6 +274,13 @@ export async function deleteLabel(id: string) {
     }
 }
 
+/**
+ * Adds a label to a card
+ *
+ * @param {string} cardId - The ID of the card to add the label to
+ * @param {string} labelId - The ID of the label to add to the card
+ * @returns {Promise<object>} The created card-label relationship
+ */
 export async function addLabelToCard(cardId: string, labelId: string) {
     try {
         const response = await plankaRequest(
@@ -214,6 +302,13 @@ export async function addLabelToCard(cardId: string, labelId: string) {
     }
 }
 
+/**
+ * Removes a label from a card
+ *
+ * @param {string} cardId - The ID of the card to remove the label from
+ * @param {string} labelId - The ID of the label to remove from the card
+ * @returns {Promise<{success: boolean}>} Success indicator
+ */
 export async function removeLabelFromCard(cardId: string, labelId: string) {
     try {
         await plankaRequest(`/api/cards/${cardId}/labels/${labelId}`, {

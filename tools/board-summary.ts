@@ -7,6 +7,12 @@ import { getTasks } from "../operations/tasks.js";
 import { getLabels } from "../operations/labels.js";
 import { getComments } from "../operations/comments.js";
 
+/**
+ * Zod schema for the getBoardSummary function parameters
+ * @property {string} boardId - The ID of the board to get a summary for
+ * @property {boolean} [includeTaskDetails=false] - Whether to include detailed task information for each card
+ * @property {boolean} [includeComments=false] - Whether to include comments for each card
+ */
 export const getBoardSummarySchema = z.object({
     boardId: z.string().describe("The ID of the board to get a summary for"),
     includeTaskDetails: z.boolean().optional().default(false).describe(
@@ -17,8 +23,25 @@ export const getBoardSummarySchema = z.object({
     ),
 });
 
+/**
+ * Type definition for getBoardSummary parameters
+ */
 export type GetBoardSummaryParams = z.infer<typeof getBoardSummarySchema>;
 
+/**
+ * Retrieves a comprehensive summary of a board including lists, cards, tasks, and statistics
+ *
+ * This function aggregates data from multiple sources to provide a complete view of a board,
+ * including its lists, cards, tasks, and labels. It also calculates various statistics and
+ * provides workflow state analysis.
+ *
+ * @param {GetBoardSummaryParams} params - Parameters for retrieving board summary
+ * @param {string} params.boardId - The ID of the board to get a summary for
+ * @param {boolean} [params.includeTaskDetails=false] - Whether to include detailed task information for each card
+ * @param {boolean} [params.includeComments=false] - Whether to include comments for each card
+ * @returns {Promise<object>} Comprehensive board summary including lists, cards, tasks, statistics, and workflow state
+ * @throws {Error} If the board is not found
+ */
 export async function getBoardSummary(params: GetBoardSummaryParams) {
     const { boardId, includeTaskDetails, includeComments } = params;
 
@@ -163,7 +186,14 @@ export async function getBoardSummary(params: GetBoardSummaryParams) {
     }
 }
 
-// Helper function to suggest the next action based on board state
+/**
+ * Helper function to suggest the next action based on board state
+ *
+ * @param {number} backlogCount - Number of cards in the Backlog list
+ * @param {number} inProgressCount - Number of cards in the In Progress list
+ * @param {number} testingCount - Number of cards in the Testing list
+ * @returns {string} A suggestion for the next action to take
+ */
 function getNextActionSuggestion(
     backlogCount: number,
     inProgressCount: number,

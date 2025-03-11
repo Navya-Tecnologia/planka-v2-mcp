@@ -1,8 +1,23 @@
+/**
+ * @fileoverview Card operations for the MCP Kanban server
+ *
+ * This module provides functions for interacting with cards in the Planka Kanban board,
+ * including creating, retrieving, updating, moving, duplicating, and deleting cards,
+ * as well as managing card stopwatches for time tracking.
+ */
+
 import { z } from "zod";
 import { plankaRequest } from "../common/utils.js";
 import { PlankaCardSchema, PlankaStopwatchSchema } from "../common/types.js";
 
 // Schema definitions
+/**
+ * Schema for creating a new card
+ * @property {string} listId - The ID of the list to create the card in
+ * @property {string} name - The name of the card
+ * @property {string} [description] - The description of the card
+ * @property {number} [position] - The position of the card in the list (default: 65535)
+ */
 export const CreateCardSchema = z.object({
     listId: z.string().describe("List ID"),
     name: z.string().describe("Card name"),
@@ -10,14 +25,31 @@ export const CreateCardSchema = z.object({
     position: z.number().optional().describe("Card position (default: 65535)"),
 });
 
+/**
+ * Schema for retrieving cards from a list
+ * @property {string} listId - The ID of the list to get cards from
+ */
 export const GetCardsSchema = z.object({
     listId: z.string().describe("List ID"),
 });
 
+/**
+ * Schema for retrieving a specific card
+ * @property {string} id - The ID of the card to retrieve
+ */
 export const GetCardSchema = z.object({
     id: z.string().describe("Card ID"),
 });
 
+/**
+ * Schema for updating a card
+ * @property {string} id - The ID of the card to update
+ * @property {string} [name] - The new name for the card
+ * @property {string} [description] - The new description for the card
+ * @property {number} [position] - The new position for the card
+ * @property {string} [dueDate] - The due date for the card (ISO format)
+ * @property {boolean} [isCompleted] - Whether the card is completed
+ */
 export const UpdateCardSchema = z.object({
     id: z.string().describe("Card ID"),
     name: z.string().optional().describe("Card name"),
@@ -91,6 +123,17 @@ const CardResponseSchema = z.object({
 });
 
 // Function implementations
+/**
+ * Creates a new card in a list
+ *
+ * @param {CreateCardOptions} options - Options for creating the card
+ * @param {string} options.listId - The ID of the list to create the card in
+ * @param {string} options.name - The name of the card
+ * @param {string} [options.description] - The description of the card
+ * @param {number} [options.position] - The position of the card in the list (default: 65535)
+ * @returns {Promise<object>} The created card
+ * @throws {Error} If the card creation fails
+ */
 export async function createCard(options: CreateCardOptions) {
     try {
         const response = await plankaRequest(
@@ -115,6 +158,12 @@ export async function createCard(options: CreateCardOptions) {
     }
 }
 
+/**
+ * Retrieves all cards for a specific list
+ *
+ * @param {string} listId - The ID of the list to get cards from
+ * @returns {Promise<Array<object>>} Array of cards in the list
+ */
 export async function getCards(listId: string) {
     try {
         // Get all projects which includes boards
@@ -197,12 +246,25 @@ export async function getCards(listId: string) {
     }
 }
 
+/**
+ * Retrieves a specific card by ID
+ *
+ * @param {string} id - The ID of the card to retrieve
+ * @returns {Promise<object>} The requested card
+ */
 export async function getCard(id: string) {
     const response = await plankaRequest(`/api/cards/${id}`);
     const parsedResponse = CardResponseSchema.parse(response);
     return parsedResponse.item;
 }
 
+/**
+ * Updates a card's properties
+ *
+ * @param {string} id - The ID of the card to update
+ * @param {Partial<Omit<CreateCardOptions, "listId">>} options - The properties to update
+ * @returns {Promise<object>} The updated card
+ */
 export async function updateCard(
     id: string,
     options: Partial<Omit<CreateCardOptions, "listId">>,
@@ -216,13 +278,14 @@ export async function updateCard(
 }
 
 /**
- * Moves a card to a different list
- * @param cardId The ID of the card to move
- * @param listId The ID of the list to move the card to
- * @param boardId The ID of the board to move the card to (optional)
- * @param projectId The ID of the project to move the card to (optional)
- * @param position The position in the target list (optional, defaults to 65535 to place at the end)
- * @returns The updated card object
+ * Moves a card to a different list or position
+ *
+ * @param {string} cardId - The ID of the card to move
+ * @param {string} listId - The ID of the list to move the card to
+ * @param {number} [position=65535] - The position in the target list
+ * @param {string} [boardId] - The ID of the board (if moving between boards)
+ * @param {string} [projectId] - The ID of the project (if moving between projects)
+ * @returns {Promise<object>} The moved card
  */
 export async function moveCard(
     cardId: string,
@@ -255,6 +318,13 @@ export async function moveCard(
     }
 }
 
+/**
+ * Duplicates a card in the same list
+ *
+ * @param {string} id - The ID of the card to duplicate
+ * @param {number} [position] - The position for the duplicated card
+ * @returns {Promise<object>} The duplicated card
+ */
 export async function duplicateCard(id: string, position?: number) {
     try {
         const response = await plankaRequest(`/api/cards/${id}/duplicate`, {
@@ -272,6 +342,12 @@ export async function duplicateCard(id: string, position?: number) {
     }
 }
 
+/**
+ * Deletes a card by ID
+ *
+ * @param {string} id - The ID of the card to delete
+ * @returns {Promise<{success: boolean}>} Success indicator
+ */
 export async function deleteCard(id: string) {
     await plankaRequest(`/api/cards/${id}`, {
         method: "DELETE",
@@ -282,9 +358,10 @@ export async function deleteCard(id: string) {
 // Stopwatch functions
 
 /**
- * Starts a stopwatch for a card
- * @param id The ID of the card
- * @returns The updated card object
+ * Starts the stopwatch for a card to track time spent
+ *
+ * @param {string} id - The ID of the card to start the stopwatch for
+ * @returns {Promise<object>} The updated card with stopwatch information
  */
 export async function startCardStopwatch(id: string) {
     try {
@@ -320,9 +397,10 @@ export async function startCardStopwatch(id: string) {
 }
 
 /**
- * Stops a stopwatch for a card
- * @param id The ID of the card
- * @returns The updated card object
+ * Stops the stopwatch for a card
+ *
+ * @param {string} id - The ID of the card to stop the stopwatch for
+ * @returns {Promise<object>} The updated card with stopwatch information
  */
 export async function stopCardStopwatch(id: string) {
     try {
@@ -367,9 +445,10 @@ export async function stopCardStopwatch(id: string) {
 }
 
 /**
- * Gets the stopwatch information for a card
- * @param id The ID of the card
- * @returns The stopwatch information
+ * Gets the current stopwatch time for a card
+ *
+ * @param {string} id - The ID of the card to get the stopwatch time for
+ * @returns {Promise<object>} The card's stopwatch information
  */
 export async function getCardStopwatch(id: string) {
     try {
@@ -416,9 +495,10 @@ export async function getCardStopwatch(id: string) {
 }
 
 /**
- * Resets a stopwatch for a card
- * @param id The ID of the card
- * @returns The updated card object
+ * Resets the stopwatch for a card
+ *
+ * @param {string} id - The ID of the card to reset the stopwatch for
+ * @returns {Promise<object>} The updated card with reset stopwatch
  */
 export async function resetCardStopwatch(id: string) {
     try {
@@ -440,9 +520,10 @@ export async function resetCardStopwatch(id: string) {
 }
 
 /**
- * Helper function to format duration in seconds to a human-readable string
- * @param seconds Total seconds
- * @returns Formatted duration string (e.g., "2h 30m 15s")
+ * Formats a duration in seconds to a human-readable string
+ *
+ * @param {number} seconds - The duration in seconds
+ * @returns {string} Formatted duration string (e.g., "2h 30m 15s")
  */
 function formatDuration(seconds: number): string {
     const hours = Math.floor(seconds / 3600);

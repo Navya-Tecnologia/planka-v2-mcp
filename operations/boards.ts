@@ -1,3 +1,11 @@
+/**
+ * @fileoverview Board operations for the MCP Kanban server
+ *
+ * This module provides functions for interacting with boards in the Planka Kanban system,
+ * including creating, retrieving, updating, and deleting boards. It also handles
+ * the creation of default lists and labels when a new board is created.
+ */
+
 import { z } from "zod";
 import { plankaRequest } from "../common/utils.js";
 import { PlankaBoardSchema } from "../common/types.js";
@@ -7,6 +15,12 @@ import * as lists from "./lists.js";
 import * as labels from "./labels.js";
 
 // Schema definitions
+/**
+ * Schema for creating a new board
+ * @property {string} projectId - The ID of the project to create the board in
+ * @property {string} name - The name of the board
+ * @property {number} [position] - The position of the board in the project (default: 65535)
+ */
 export const CreateBoardSchema = z.object({
     projectId: z.string().describe("Project ID"),
     name: z.string().describe("Board name"),
@@ -15,26 +29,53 @@ export const CreateBoardSchema = z.object({
     ),
 });
 
+/**
+ * Schema for retrieving boards from a project
+ * @property {string} projectId - The ID of the project to get boards from
+ */
 export const GetBoardsSchema = z.object({
     projectId: z.string().describe("Project ID"),
 });
 
+/**
+ * Schema for retrieving a specific board
+ * @property {string} id - The ID of the board to retrieve
+ */
 export const GetBoardSchema = z.object({
     id: z.string().describe("Board ID"),
 });
 
+/**
+ * Schema for updating a board
+ * @property {string} id - The ID of the board to update
+ * @property {string} [name] - The new name for the board
+ * @property {number} [position] - The new position for the board
+ * @property {string} [type] - The type of the board
+ */
 export const UpdateBoardSchema = z.object({
     id: z.string().describe("Board ID"),
     name: z.string().optional().describe("Board name"),
     position: z.number().optional().describe("Board position"),
+    type: z.string().optional().describe("Board type"),
 });
 
+/**
+ * Schema for deleting a board
+ * @property {string} id - The ID of the board to delete
+ */
 export const DeleteBoardSchema = z.object({
     id: z.string().describe("Board ID"),
 });
 
 // Type exports
+/**
+ * Type definition for board creation options
+ */
 export type CreateBoardOptions = z.infer<typeof CreateBoardSchema>;
+
+/**
+ * Type definition for board update options
+ */
 export type UpdateBoardOptions = z.infer<typeof UpdateBoardSchema>;
 
 // Response schemas
@@ -51,7 +92,10 @@ const BoardResponseSchema = z.object({
 // Function implementations
 /**
  * Creates default lists for a new board
- * @param boardId The ID of the board to create lists for
+ *
+ * @param {string} boardId - The ID of the board to create lists for
+ * @returns {Promise<void>}
+ * @private
  */
 async function createDefaultLists(boardId: string) {
     try {
@@ -131,6 +175,16 @@ async function createDefaultLabels(boardId: string) {
     }
 }
 
+/**
+ * Creates a new board in a project with default lists and labels
+ *
+ * @param {CreateBoardOptions} options - Options for creating the board
+ * @param {string} options.projectId - The ID of the project to create the board in
+ * @param {string} options.name - The name of the board
+ * @param {number} [options.position] - The position of the board in the project
+ * @returns {Promise<object>} The created board
+ * @throws {Error} If the board creation fails
+ */
 export async function createBoard(options: CreateBoardOptions) {
     try {
         const response = await plankaRequest(
@@ -181,6 +235,13 @@ export async function createBoard(options: CreateBoardOptions) {
     }
 }
 
+/**
+ * Retrieves all boards for a specific project
+ *
+ * @param {string} projectId - The ID of the project to get boards from
+ * @returns {Promise<Array<object>>} Array of boards in the project
+ * @throws {Error} If retrieving boards fails
+ */
 export async function getBoards(projectId: string) {
     try {
         // Get all projects which includes boards in the response
@@ -217,12 +278,27 @@ export async function getBoards(projectId: string) {
     }
 }
 
+/**
+ * Retrieves a specific board by ID
+ *
+ * @param {string} id - The ID of the board to retrieve
+ * @returns {Promise<object>} The requested board
+ * @throws {Error} If retrieving the board fails
+ */
 export async function getBoard(id: string) {
     const response = await plankaRequest(`/api/boards/${id}`);
     const parsedResponse = BoardResponseSchema.parse(response);
     return parsedResponse.item;
 }
 
+/**
+ * Updates a board's properties
+ *
+ * @param {string} id - The ID of the board to update
+ * @param {Partial<Omit<CreateBoardOptions, "projectId">>} options - The properties to update
+ * @returns {Promise<object>} The updated board
+ * @throws {Error} If updating the board fails
+ */
 export async function updateBoard(
     id: string,
     options: Partial<Omit<CreateBoardOptions, "projectId">>,
@@ -235,6 +311,13 @@ export async function updateBoard(
     return parsedResponse.item;
 }
 
+/**
+ * Deletes a board by ID
+ *
+ * @param {string} id - The ID of the board to delete
+ * @returns {Promise<{success: boolean}>} Success indicator
+ * @throws {Error} If deleting the board fails
+ */
 export async function deleteBoard(id: string) {
     await plankaRequest(`/api/boards/${id}`, {
         method: "DELETE",

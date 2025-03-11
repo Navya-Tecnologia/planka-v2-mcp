@@ -5,6 +5,14 @@ import { getLists } from "../operations/lists.js";
 import { getBoard } from "../operations/boards.js";
 import { getTask, updateTask } from "../operations/tasks.js";
 
+/**
+ * Zod schema for the workflow action parameters
+ * @property {string} action - The workflow action to perform (start_working, mark_completed, move_to_testing, move_to_done)
+ * @property {string} cardId - The ID of the card to perform the action on
+ * @property {string} [comment] - Optional comment to add with the action
+ * @property {string[]} [taskIds] - Optional task IDs to mark as completed (for mark_completed action)
+ * @property {string} [boardId] - Optional board ID (if not provided, will attempt to determine from card)
+ */
 export const workflowActionSchema = z.object({
     action: z.enum([
         "start_working",
@@ -24,8 +32,26 @@ export const workflowActionSchema = z.object({
     ),
 });
 
+/**
+ * Type definition for workflow action parameters
+ */
 export type WorkflowActionParams = z.infer<typeof workflowActionSchema>;
 
+/**
+ * Performs a workflow action on a card (start working, mark completed, move to testing, move to done)
+ *
+ * This function handles common workflow actions for cards in a Kanban board, including
+ * moving cards between lists, marking tasks as completed, and adding comments to document progress.
+ *
+ * @param {WorkflowActionParams} params - Parameters for the workflow action
+ * @param {string} params.action - The workflow action to perform (start_working, mark_completed, move_to_testing, move_to_done)
+ * @param {string} params.cardId - The ID of the card to perform the action on
+ * @param {string} [params.comment] - Optional comment to add with the action
+ * @param {string[]} [params.taskIds] - Optional task IDs to mark as completed (for mark_completed action)
+ * @param {string} [params.boardId] - Optional board ID (if not provided, will attempt to determine from card)
+ * @returns {Promise<object>} The result of the workflow action
+ * @throws {Error} If the card or board is not found, or if the action cannot be performed
+ */
 export async function performWorkflowAction(params: WorkflowActionParams) {
     const { action, cardId, comment, taskIds, boardId: providedBoardId } =
         params;
