@@ -192,3 +192,59 @@ export function validateCardName(name: string): string {
   }
   return sanitized;
 }
+
+/**
+ * Looks up a user ID by email
+ *
+ * @param {string} email - The email of the user to look up
+ * @returns {Promise<string | null>} The user ID if found, null otherwise
+ */
+export async function getUserIdByEmail(email: string): Promise<string | null> {
+  try {
+    // Get all users
+    const response = await plankaRequest("/api/users");
+    const { items } = response as {
+      items: Array<{ id: string; email: string }>;
+    };
+
+    // Find the user with the matching email
+    const user = items.find((user) => user.email === email);
+    return user ? user.id : null;
+  } catch (error) {
+    console.error(
+      `Failed to get user ID by email: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+    return null;
+  }
+}
+
+/**
+ * Looks up a user ID by username
+ *
+ * @param {string} username - The username of the user to look up
+ * @returns {Promise<string | null>} The user ID if found, null otherwise
+ */
+export async function getUserIdByUsername(
+  username: string,
+): Promise<string | null> {
+  try {
+    // Get all users
+    const response = await plankaRequest("/api/users");
+    const { items } = response as {
+      items: Array<{ id: string; username: string }>;
+    };
+
+    // Find the user with the matching username
+    const user = items.find((user) => user.username === username);
+    return user ? user.id : null;
+  } catch (error) {
+    console.error(
+      `Failed to get user ID by username: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+    return null;
+  }
+}

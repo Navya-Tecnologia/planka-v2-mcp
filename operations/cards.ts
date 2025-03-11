@@ -327,12 +327,28 @@ export async function moveCard(
  */
 export async function duplicateCard(id: string, position?: number) {
     try {
-        const response = await plankaRequest(`/api/cards/${id}/duplicate`, {
-            method: "POST",
-            body: position ? { position } : undefined,
+        // First, get the original card to access its name
+        const originalCard = await getCard(id);
+
+        // Create a new card with "Copy of" prefix
+        const cardName = originalCard ? `Copy of ${originalCard.name}` : "";
+
+        // Get the list ID from the original card
+        const listId = originalCard ? originalCard.listId : "";
+
+        if (!listId) {
+            throw new Error("Could not determine list ID for card duplication");
+        }
+
+        // Create a new card with the same properties but with "Copy of" prefix
+        const newCard = await createCard({
+            listId,
+            name: cardName,
+            description: originalCard.description || "",
+            position: position || 65535,
         });
-        const parsedResponse = CardResponseSchema.parse(response);
-        return parsedResponse.item;
+
+        return newCard;
     } catch (error) {
         throw new Error(
             `Failed to duplicate card: ${

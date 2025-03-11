@@ -51,7 +51,8 @@ export type CreateCardWithTasksParams = z.infer<
  * @throws {Error} If there's an error creating the card, tasks, or comment
  */
 export async function createCardWithTasks(params: CreateCardWithTasksParams) {
-    const { listId, name, description, tasks, comment, position } = params;
+    const { listId, name, description, tasks, comment, position = 65535 } =
+        params;
 
     try {
         // Create the card

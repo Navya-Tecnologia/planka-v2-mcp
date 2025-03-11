@@ -283,15 +283,17 @@ export async function deleteLabel(id: string) {
  */
 export async function addLabelToCard(cardId: string, labelId: string) {
     try {
-        const response = await plankaRequest(
+        // The correct endpoint is /api/cards/{cardId}/labels with labelId in the body
+        await plankaRequest(
             `/api/cards/${cardId}/labels`,
             {
                 method: "POST",
                 body: {
-                    labelId: labelId,
+                    labelId,
                 },
             },
         );
+
         return { success: true };
     } catch (error) {
         throw new Error(
@@ -311,9 +313,14 @@ export async function addLabelToCard(cardId: string, labelId: string) {
  */
 export async function removeLabelFromCard(cardId: string, labelId: string) {
     try {
-        await plankaRequest(`/api/cards/${cardId}/labels/${labelId}`, {
-            method: "DELETE",
-        });
+        // The correct endpoint is /api/cards/{cardId}/labels/{labelId}
+        await plankaRequest(
+            `/api/cards/${cardId}/labels/${labelId}`,
+            {
+                method: "DELETE",
+            },
+        );
+
         return { success: true };
     } catch (error) {
         throw new Error(

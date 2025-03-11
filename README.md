@@ -101,6 +101,93 @@ You can customize the setup by modifying the `.env` file:
 - `PLANKA_AGENT_EMAIL`: Email for the Planka agent (default: same as admin)
 - `PLANKA_AGENT_PASSWORD`: Password for the Planka agent (default: same as admin)
 
+## Detailed Planka Setup Guide
+
+After starting the Planka Docker containers, you need to perform several additional setup steps to ensure the MCP Kanban server can interact with your Planka board properly.
+
+### 1. Initial Login and Project Creation
+
+1. Access the Planka web interface at http://localhost:3333 (or your configured port)
+2. Log in with the admin credentials:
+   - Email: `demo@demo.demo` (or your configured admin email)
+   - Password: `demo` (or your configured admin password)
+3. Create a new project:
+   - Click the "+" button
+   - Enter a project name (e.g., "My Project")
+   - Click "Create"
+
+### 2. Creating the Agent User
+
+The MCP Kanban server needs a dedicated user account to interact with Planka:
+
+1. While logged in as admin, click on users icon in the top right
+2. Click the "Add user" button
+3. Fill in the agent user details:
+   - Name: `Kanban Agent` (or any descriptive name)
+   - Username: `kanban-agent` (or any unique username)
+   - Email: `claude-kanban-mcp@cursor.com` (or your preferred agent email)
+   - Password: `supersupersecre` (or a secure password)
+4. Click "Add" to create the agent user
+5. **Important**: Make note of the agent's username, email, and password as you'll need them for MCP configuration
+
+### 3. Adding the Agent User to Your Project
+
+The agent user needs access to your project to manage cards and tasks:
+
+1. Go back to your project board
+2. Click on the project name in the top-left corner
+4. Click on the "Managers" tab
+5. Click the add user icon
+6. Search for the agent user by username or email
+7. Select the agent user
+
+### 4. Updating MCP Configuration
+
+Now that you have created the agent user, update your MCP configuration to use the agent credentials:
+
+1. Edit your `.cursor/mcp.json` file to include the correct agent credentials:
+
+```json
+{
+  "mcpServers": {
+    "kanban": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "PLANKA_BASE_URL=http://host.docker.internal:3333",
+         "-e",
+        "PLANKA_ADMIN_EMAIL=demo@demo.demo",
+        "-e",
+        "PLANKA_AGENT_EMAIL=claude-kanban-mcp@cursor.com",
+        "-e",
+        "PLANKA_AGENT_PASSWORD=supersupersecre",
+        "mcp-kanban:latest"
+      ]
+    }
+  }
+}
+```
+
+Make sure to:
+- Use the correct Planka port in `PLANKA_BASE_URL` (matching your `.env` file)
+- Use the admin email used in .env or whatever was created
+- Use the agent email and password you created in step 2
+- Use `host.docker.internal` instead of `localhost` to access the host from within the container
+
+### 6. Testing the MCP Connection
+
+To verify that the MCP Kanban server can connect to Planka with the agent credentials:
+
+1. Restart MCP to apply the MCP configuration changes by enabling or disabling then enabling
+2. Open a new chat with Claude in Cursor
+3. Ask Claude to list the available projects using the MCP Kanban tools
+4. Claude should be able to retrieve and display your project information
+
+The MCP Kanban server is now set up to help Claude interact with your Planka board, following the task-oriented development workflow described in the `.cursorrules` file.
+
 ## Running the MCP Server with Cursor
 
 To use the MCP Kanban server with Cursor, you need to add it as an MCP server in Cursor's settings:
@@ -117,8 +204,10 @@ To use the MCP Kanban server with Cursor, you need to add it as an MCP server in
    - **Type**: Select "stdio" as the transport
    - **Command**: Enter the command to run the Docker container:
      ```
-     docker run -i --rm -e PLANKA_BASE_URL=http://host.docker.internal:3333 -e PLANKA_ADMIN_ID=1460688047300412417 -e PLANKA_AGENT_EMAIL=claude-kanban-mcp@cursor.com -e PLANKA_AGENT_PASSWORD=supersupersecre mcp-kanban:latest
+     docker run -i --rm -e PLANKA_BASE_URL=http://host.docker.internal:3333 -e PLANKA_AGENT_EMAIL=claude-kanban-mcp@cursor.com -e PLANKA_AGENT_PASSWORD=supersupersecre mcp-kanban:latest
      ```
+     
+     Note: The system will automatically look up the admin user ID using the `PLANKA_ADMIN_EMAIL` or `PLANKA_ADMIN_USERNAME` environment variables defined in your `.env` file.
 
 4. Click "Add" to save the MCP server configuration.
 
@@ -140,8 +229,6 @@ Alternatively, you can configure the MCP server for a specific project using `.c
         "-e",
         "PLANKA_BASE_URL=http://host.docker.internal:3333",
         "-e",
-        "PLANKA_ADMIN_ID=1460688047300412417",
-        "-e",
         "PLANKA_AGENT_EMAIL=claude-kanban-mcp@cursor.com",
         "-e",
         "PLANKA_AGENT_PASSWORD=supersupersecre",
@@ -151,6 +238,8 @@ Alternatively, you can configure the MCP server for a specific project using `.c
   }
 }
 ```
+
+Note: The system will automatically look up the admin user ID using the `PLANKA_ADMIN_EMAIL` or `PLANKA_ADMIN_USERNAME` environment variables that are defined in your `.env` file.
 
 ### Configuring Rules for LLMs
 

@@ -41,9 +41,11 @@ export const GetTasksSchema = z.object({
 /**
  * Schema for retrieving a specific task
  * @property {string} id - The ID of the task to retrieve
+ * @property {string} [cardId] - The ID of the card containing the task
  */
 export const GetTaskSchema = z.object({
     id: z.string().describe("Task ID"),
+    cardId: z.string().optional().describe("Card ID containing the task"),
 });
 
 /**
@@ -97,32 +99,43 @@ const TaskResponseSchema = z.object({
     included: z.record(z.any()).optional(),
 });
 
+// Map to store task ID to card ID mapping
+const taskCardIdMap: Record<string, string> = {};
+
 // Function implementations
 /**
- * Creates a new task in a card
+ * Creates a new task for a card
  *
- * @param {CreateTaskOptions} options - Options for creating the task
- * @param {string} options.cardId - The ID of the card to create the task in
- * @param {string} options.name - The name of the task
- * @param {number} [options.position] - The position of the task in the card (default: 65535)
+ * @param {object} params - The task creation parameters
+ * @param {string} params.cardId - The ID of the card to create the task in
+ * @param {string} params.name - The name of the new task
+ * @param {number} params.position - The position of the task in the card
  * @returns {Promise<object>} The created task
- * @throws {Error} If the task creation fails
  */
-export async function createTask(options: CreateTaskOptions) {
+export async function createTask(params: {
+    cardId: string;
+    name: string;
+    position?: number;
+}) {
     try {
-        const response = await plankaRequest(
-            `/api/cards/${options.cardId}/tasks`,
+        const { cardId, name, position = 65535 } = params;
+
+        const response: any = await plankaRequest(
+            `/api/cards/${cardId}/tasks`,
             {
                 method: "POST",
-                body: {
-                    name: options.name,
-                    position: options.position,
-                },
+                body: { name, position },
             },
         );
-        const parsedResponse = TaskResponseSchema.parse(response);
-        return parsedResponse.item;
+
+        // Store the task ID to card ID mapping for getTask
+        if (response.item && response.item.id) {
+            taskCardIdMap[response.item.id] = cardId;
+        }
+
+        return response.item;
     } catch (error) {
+        console.error("Error creating task:", error);
         throw new Error(
             `Failed to create task: ${
                 error instanceof Error ? error.message : String(error)
@@ -134,15 +147,15 @@ export async function createTask(options: CreateTaskOptions) {
 /**
  * Creates multiple tasks for cards in a single operation
  *
- * @param {BatchCreateTasksOptions} options - Options for batch creating tasks
- * @param {Array<CreateTaskOptions>} options.tasks - Array of tasks to create
- * @returns {Promise<{successes: Array<object>, failures: Array<TaskError>}>} Results of the batch operation
+ * @param {BatchCreateTasksOptions} options - The batch create tasks options
+ * @returns {Promise<{results: any[], successes: any[], failures: TaskError[]}>} The results of the batch operation
  * @throws {Error} If the batch operation fails completely
  */
 export async function batchCreateTasks(options: BatchCreateTasksOptions) {
     try {
         const results: Array<any> = [];
-        const errors: Array<any> = [];
+        const successes: Array<any> = [];
+        const failures: Array<any> = [];
 
         /**
          * Interface for task operation result
@@ -172,12 +185,19 @@ export async function batchCreateTasks(options: BatchCreateTasksOptions) {
         // Process each task in sequence
         for (let i = 0; i < options.tasks.length; i++) {
             const task = options.tasks[i];
+
+            // Ensure position is set if not provided
+            if (!task.position) {
+                task.position = 65535 * (i + 1);
+            }
+
             try {
                 const result = await createTask(task);
                 results.push({
                     success: true,
                     result,
                 });
+                successes.push(result);
             } catch (error) {
                 const errorMessage = error instanceof Error
                     ? error.message
@@ -186,7 +206,7 @@ export async function batchCreateTasks(options: BatchCreateTasksOptions) {
                     success: false,
                     error: { message: errorMessage },
                 });
-                errors.push({
+                failures.push({
                     index: i,
                     task,
                     error: errorMessage,
@@ -196,10 +216,8 @@ export async function batchCreateTasks(options: BatchCreateTasksOptions) {
 
         return {
             results,
-            successes: results.filter((r: TaskResult) => r.success).map(
-                (r: TaskResult) => r.result,
-            ),
-            failures: errors as TaskError[],
+            successes,
+            failures,
         };
     } catch (error) {
         throw new Error(
@@ -218,10 +236,26 @@ export async function batchCreateTasks(options: BatchCreateTasksOptions) {
  */
 export async function getTasks(cardId: string) {
     try {
-        const response = await plankaRequest(`/api/cards/${cardId}/tasks`);
-        const parsedResponse = TasksResponseSchema.parse(response);
-        return parsedResponse.items;
+        // Instead of using the tasks endpoint which returns HTML,
+        // we'll get the card details which includes tasks
+        const response = await plankaRequest(`/api/cards/${cardId}`) as {
+            item: any;
+            included?: {
+                tasks?: any[];
+            };
+        };
+
+        // Extract tasks from the card response
+        if (
+            response?.included?.tasks && Array.isArray(response.included.tasks)
+        ) {
+            const tasks = response.included.tasks;
+            return tasks;
+        }
+
+        return [];
     } catch (error) {
+        console.error(`Error getting tasks for card ${cardId}:`, error);
         // If there's an error, return an empty array
         return [];
     }
@@ -231,12 +265,55 @@ export async function getTasks(cardId: string) {
  * Retrieves a specific task by ID
  *
  * @param {string} id - The ID of the task to retrieve
+ * @param {string} [cardId] - Optional card ID to help find the task
  * @returns {Promise<object>} The requested task
  */
-export async function getTask(id: string) {
-    const response = await plankaRequest(`/api/tasks/${id}`);
-    const parsedResponse = TaskResponseSchema.parse(response);
-    return parsedResponse.item;
+export async function getTask(id: string, cardId?: string) {
+    try {
+        // Tasks in Planka are always part of a card, so we need the card ID
+        const taskCardId = cardId || taskCardIdMap[id];
+
+        if (!taskCardId) {
+            throw new Error(
+                "Card ID is required to get a task. Either provide it directly or create the task first.",
+            );
+        }
+
+        // Get the card details which includes tasks
+        const response = await plankaRequest(`/api/cards/${taskCardId}`) as {
+            item: any;
+            included?: {
+                tasks?: any[];
+            };
+        };
+
+        if (
+            !response?.included?.tasks ||
+            !Array.isArray(response.included.tasks)
+        ) {
+            throw new Error(`Failed to get tasks for card ${taskCardId}`);
+        }
+
+        // Find the task with the matching ID
+        const task = response.included.tasks.find((task: any) =>
+            task.id === id
+        );
+
+        if (!task) {
+            throw new Error(
+                `Task with ID ${id} not found in card ${taskCardId}`,
+            );
+        }
+
+        return task;
+    } catch (error) {
+        console.error(`Error getting task with ID ${id}:`, error);
+        throw new Error(
+            `Failed to get task: ${
+                error instanceof Error ? error.message : String(error)
+            }`,
+        );
+    }
 }
 
 /**
