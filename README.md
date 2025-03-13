@@ -318,3 +318,98 @@ This project includes a guide for implementing a task-oriented Kanban developmen
 ## License
 
 MIT
+
+## Developer Workflows with MCP Kanban
+
+The MCP Kanban server enables powerful collaboration patterns between developers and LLMs. This section outlines several effective workflows that leverage the strengths of both human developers and AI assistants.
+
+### LLM-Driven Development with Human Review
+
+In this workflow, the LLM handles most of the implementation work while humans focus on review and direction:
+
+1. **Human**: Creates high-level cards in the Backlog with basic requirements
+2. **LLM**: 
+   - Grooms the cards by breaking them down into specific tasks
+   - Moves cards to In Progress and implements the tasks
+   - Documents progress with detailed comments
+   - Moves completed cards to Testing
+3. **Human**: 
+   - Reviews the implementation in Testing
+   - Provides feedback as comments
+   - Approves or requests changes
+4. **LLM**: 
+   - Addresses feedback by moving cards back to In Progress if needed
+   - Implements requested changes
+   - Moves cards to Done when approved
+
+**Benefits**: Maximizes developer productivity by offloading implementation details to the LLM while maintaining human oversight for quality control.
+
+### Human-Driven Development with LLM Support
+
+In this workflow, humans handle the core implementation while the LLM provides support:
+
+1. **LLM**: 
+   - Grooms the Backlog by analyzing requirements and breaking them into tasks
+   - Provides technical recommendations and implementation approaches
+2. **Human**: 
+   - Selects cards to work on and moves them to In Progress
+   - Implements the tasks
+   - Moves completed cards to Testing
+3. **LLM**: 
+   - Reviews the implementation
+   - Provides feedback on code quality, potential issues, and improvements
+   - Documents the review as comments
+4. **Human**: 
+   - Addresses feedback
+   - Moves cards to Done when complete
+
+**Benefits**: Leverages the LLM's ability to analyze requirements and review code while keeping humans in control of the implementation.
+
+### Collaborative Grooming and Planning
+
+In this workflow, humans and LLMs collaborate on planning and organizing work:
+
+1. **Human**: Creates basic card ideas in the Backlog
+2. **LLM**: 
+   - Analyzes the codebase to provide context
+   - Breaks down cards into specific tasks
+   - Identifies dependencies and potential challenges
+   - Suggests implementation approaches
+3. **Human**: 
+   - Reviews and refines the groomed cards
+   - Prioritizes the Backlog
+   - Assigns cards to team members or the LLM
+4. **Both**: Implement cards according to their assigned responsibilities
+
+**Benefits**: Improves planning quality by combining human domain knowledge with the LLM's ability to analyze the codebase and identify implementation details.
+
+### Context Retention Across Sessions
+
+One of the key advantages of using MCP Kanban with LLMs is context retention across different chat sessions:
+
+1. **Card State**: The LLM can retrieve the current state of any card, including its description, tasks, comments, and history
+2. **Work Continuity**: Even if a developer starts a new chat session, the LLM can pick up exactly where it left off by checking the Kanban board
+3. **Knowledge Transfer**: New team members can quickly get up to speed by having the LLM explain the current state of the project based on the Kanban board
+4. **Documentation**: The Kanban board serves as living documentation of the project's progress and decisions
+
+### Task-Focused Development
+
+The MCP Kanban system helps keep both humans and LLMs focused on specific tasks:
+
+1. **Clear Priorities**: The Kanban board makes it clear which tasks are highest priority
+2. **Structured Workflow**: The board enforces a consistent process from Backlog to Done
+3. **Progress Tracking**: Time tracking and task completion provide visibility into progress
+4. **Reduced Context Switching**: By focusing on one card at a time, both humans and LLMs can maintain focus and productivity
+
+### Implementation Guidelines
+
+To get the most out of these workflows:
+
+1. **Be Specific in Card Creation**: Provide clear requirements and context when creating cards
+2. **Use Labels Effectively**: Apply labels to indicate priority, type, and status
+3. **Document Decisions**: Use comments to document important decisions and rationales
+4. **Break Down Work**: Create small, focused cards rather than large, complex ones
+5. **Provide Feedback**: Give specific, actionable feedback when reviewing LLM work
+6. **Maintain the Board**: Regularly groom the Backlog and move cards through the workflow
+
+By following these guidelines and selecting the workflow that best fits your team's needs, you can effectively leverage the MCP Kanban system to enhance collaboration between human developers and LLMs.

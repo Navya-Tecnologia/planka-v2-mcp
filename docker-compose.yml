@@ -4,21 +4,23 @@ services:
   kanban:
     image: ghcr.io/plankanban/planka:latest
     container_name: kanban
-    restart: on-failure
+    restart: unless-stopped
     ports:
       - "${PLANKA_PORT}:1337"
     environment:
       - BASE_URL=${BASE_URL}
       - TRUST_PROXY=${TRUST_PROXY}
-      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
       - SECRET_KEY=${SECRET_KEY}
       # Admin credentials
       - DEFAULT_ADMIN_EMAIL=${PLANKA_ADMIN_EMAIL}
       - DEFAULT_ADMIN_PASSWORD=${PLANKA_ADMIN_PASSWORD}
       - DEFAULT_ADMIN_NAME=${PLANKA_ADMIN_NAME}
       - DEFAULT_ADMIN_USERNAME=${PLANKA_ADMIN_USERNAME}
+      - NODE_ENV=production
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     volumes:
       - kanban-files:/app/public/user-files
       - kanban-user-avatars:/app/public/user-avatars
@@ -28,16 +30,33 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: kanban-postgres
-    restart: on-failure
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     volumes:
-      - kanban-db:/var/lib/postgresql/data
+      - type: volume
+        source: kanban-db
+        target: /var/lib/postgresql/data
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=100"
+      - "-c"
+      - "shared_buffers=256MB"
 
 volumes:
   kanban-db:
+    name: kanban-db-persistent
   kanban-files:
   kanban-user-avatars:
   kanban-project-background-images:
