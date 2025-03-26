@@ -15,15 +15,15 @@ Kanban MCP is a bridge between [Planka](https://planka.app/) (an open-source kan
 
 This integration enables a seamless workflow where you can ask Claude to help manage your development tasks, track progress, and organize your work.
 
-## 🚦 Getting Started
+## 🚦 Quick Start
 
 ### 📋 Prerequisites
 
-- 🐳 [Docker](https://www.docker.com/get-started) for running Planka and the MCP server
+- 🐳 [Docker](https://www.docker.com/get-started) for running Planka
 - 🔄 [Git](https://git-scm.com/downloads) for cloning the repository
 - 🟢 [Node.js](https://nodejs.org/) (version 18 or above) and npm for development
 
-### 📥 Quick Installation
+### 📥 Installation
 
 1. Clone this repository:
 ```bash
@@ -31,44 +31,46 @@ git clone https://github.com/bradrisse/kanban-mcp.git
 cd kanban-mcp
 ```
 
-2. Build and start the services:
+2. Install dependencies and build the TypeScript code:
 ```bash
-# Build the TypeScript code and create a Docker image
-npm run build-docker
+npm install
+npm run build
+```
 
-# Start the Planka containers (kanban and postgres)
+3. Start the Planka containers:
+```bash
 npm run up
 ```
 
-3. Access the Planka Kanban board:
+4. Access the Planka Kanban board:
    - Default URL: http://localhost:3333
    - Default credentials: 
      - Email: demo@demo.demo
      - Password: demo
 
-4. Configure Cursor to use the MCP server:
+5. Configure Cursor to use the MCP server:
    - In Cursor, go to Settings > Features > MCP
    - Add a new MCP server with the following configuration:
    ```json
    {
      "mcpServers": {
        "kanban": {
-         "command": "docker",
-         "args": [
-           "run", "-i", "--rm",
-           "-e", "PLANKA_BASE_URL=http://host.docker.internal:3333",
-           "-e", "PLANKA_AGENT_EMAIL=claude-kanban-mcp@cursor.com",
-           "-e", "PLANKA_AGENT_PASSWORD=supersupersecre",
-           "mcp-kanban:latest"
-         ]
+         "command": "node",
+         "args": ["/path/to/kanban-mcp/dist/index.js"],
+         "env": {
+           "PLANKA_BASE_URL": "http://localhost:3333",
+           "PLANKA_AGENT_EMAIL": "demo@demo.demo",
+           "PLANKA_AGENT_PASSWORD": "demo"
+         }
        }
      }
    }
    ```
+   - Replace `/path/to/kanban-mcp` with the actual absolute path to your kanban-mcp directory
 
-⚠️ **Important**: When configuring Docker, always use `host.docker.internal` instead of `localhost` to access the host from within the container.
+Alternatively, you can use a project-specific configuration by creating a `.cursor/mcp.json` file in your project root with the same configuration.
 
-For detailed setup instructions, see the [Installation Guide](https://github.com/bradrisse/kanban-mcp/wiki/Installation-Guide).
+For Docker-based deployment and other advanced options, see the [Installation Guide](https://github.com/bradrisse/kanban-mcp/wiki/Installation-Guide).
 
 ## 📚 Documentation
 
@@ -129,32 +131,6 @@ MCP Kanban supports several workflow strategies for LLM-human collaboration:
 
 For more details on these strategies, see the [Capabilities and Strategies](https://github.com/bradrisse/kanban-mcp/wiki/Capabilities-and-Strategies) wiki page.
 
-## 🧪 Running MCP Server Directly with Node
-
-Instead of running the MCP server in Docker, you can build and run it directly with Node:
-
-1. Build the TypeScript code:
-```bash
-npm run build
-```
-
-2. Run the MCP server with the necessary environment variables:
-```bash
-# Using npm script
-PLANKA_BASE_URL=http://localhost:3333 \
-PLANKA_AGENT_EMAIL=demo@demo.demo \
-PLANKA_AGENT_PASSWORD=demo \
-npm run start-node
-
-# Or directly with Node
-PLANKA_BASE_URL=http://localhost:3333 \
-PLANKA_AGENT_EMAIL=demo@demo.demo \
-PLANKA_AGENT_PASSWORD=demo \
-node dist/index.js
-```
-
-3. Configure Cursor to use the locally running MCP server.
-
 ## 📦 Available npm Scripts
 
 - `npm run build`: Build the TypeScript code
@@ -162,7 +138,7 @@ node dist/index.js
 - `npm run up`: Start the Planka containers (kanban and postgres)
 - `npm run down`: Stop all containers
 - `npm run restart`: Restart the Planka containers
-- `npm run start-node`: Start the MCP server directly with Node
+- `npm run start-node`: Start the MCP server directly with Node (for testing outside of Cursor)
 - `npm run qc`: Run quality control checks (linting and type checking)
 
 ## 🤝 Contributing
