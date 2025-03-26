@@ -63,6 +63,59 @@ npm run up
    }
    ```
 
+## Running MCP Server Directly with Node
+
+Instead of running the MCP server in Docker, you can build and run it directly with Node:
+
+1. Build the TypeScript code:
+```bash
+npm run build
+```
+
+2. Run the MCP server with the necessary environment variables:
+```bash
+# Using npm script
+PLANKA_BASE_URL=http://localhost:3333 \
+PLANKA_AGENT_EMAIL=demo@demo.demo \
+PLANKA_AGENT_PASSWORD=demo \
+npm run start-node
+
+# Or with npm run -e option
+npm run -e PLANKA_BASE_URL=http://localhost:3333 \
+   -e PLANKA_AGENT_EMAIL=demo@demo.demo \
+   -e PLANKA_AGENT_PASSWORD=demo \
+   start-node
+
+# Or directly with Node
+PLANKA_BASE_URL=http://localhost:3333 \
+PLANKA_AGENT_EMAIL=demo@demo.demo \
+PLANKA_AGENT_PASSWORD=demo \
+node dist/index.js
+```
+
+3. Configure Cursor to use the locally running MCP server:
+   - In Cursor, go to Settings > Features > MCP
+   - Add a new MCP server with the following configuration:
+   ```json
+   {
+     "mcpServers": {
+       "kanban": {
+         "command": "node",
+         "args": [
+           "/absolute/path/to/kanban-mcp/dist/index.js"
+         ],
+         "env": {
+           "PLANKA_BASE_URL": "http://localhost:3333",
+           "PLANKA_AGENT_EMAIL": "demo@demo.demo",
+           "PLANKA_AGENT_PASSWORD": "demo"
+         }
+       }
+     }
+   }
+   ```
+
+Note: Replace `/absolute/path/to/kanban-mcp` with the actual absolute path to your kanban-mcp directory.
+
 ## Documentation
 
 For detailed documentation, please visit our [Wiki](https://github.com/bradrisse/kanban-mcp/wiki):
@@ -91,6 +144,7 @@ For more details on these strategies, see the [Capabilities and Strategies](http
 - `npm run up`: Start the Planka containers (kanban and postgres)
 - `npm run down`: Stop all containers
 - `npm run restart`: Restart the Planka containers
+- `npm run start-node`: Start the MCP server directly with Node
 
 ## License
 
