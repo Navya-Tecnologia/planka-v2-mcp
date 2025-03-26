@@ -4,23 +4,20 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 
 // Import Planka operations
-import * as projects from "./operations/projects.js";
-import * as boards from "./operations/boards.js";
-import * as lists from "./operations/lists.js";
-import * as cards from "./operations/cards.js";
-import * as labels from "./operations/labels.js";
-import * as tasks from "./operations/tasks.js";
-import * as comments from "./operations/comments.js";
 import * as boardMemberships from "./operations/boardMemberships.js";
+import * as boards from "./operations/boards.js";
+import * as cards from "./operations/cards.js";
+import * as comments from "./operations/comments.js";
+import * as labels from "./operations/labels.js";
+import * as lists from "./operations/lists.js";
+import * as projects from "./operations/projects.js";
+import * as tasks from "./operations/tasks.js";
 
 // Import custom tools
 import {
   createCardWithTasks,
-  createCardWithTasksSchema,
   getBoardSummary,
-  getBoardSummarySchema,
   getCardDetails,
-  getCardDetailsSchema,
 } from "./tools/index.js";
 
 import { VERSION } from "./common/version.js";
@@ -34,797 +31,761 @@ const server = new McpServer(
     capabilities: {
       tools: {},
     },
-  },
+  }
 );
 
-// Planka operations
-server.tool(
-  "get_projects",
-  "Get all projects from Planka with pagination support",
-  {
-    page: z.number().describe("The page number to retrieve (1-indexed)"),
-    perPage: z.number().describe("The number of projects to retrieve per page"),
-  },
-  async (args) => {
-    const result = await projects.getProjects(args.page, args.perPage);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
+// ----- CONSOLIDATED KANBAN TOOLS -----
 
+// 1. Project and Board Manager
 server.tool(
-  "get_project",
-  "Get a specific project by ID",
+  "mcp_kanban_project_board_manager",
+  "Manage projects and boards with various operations",
   {
-    id: z.string().describe("The ID of the project to retrieve"),
+    action: z
+      .enum([
+        "get_projects",
+        "get_project",
+        "get_boards",
+        "create_board",
+        "get_board",
+        "update_board",
+        "delete_board",
+        "get_board_summary",
+      ])
+      .describe("The action to perform"),
+    id: z.string().optional().describe("The ID of the project or board"),
+    projectId: z.string().optional().describe("The ID of the project"),
+    name: z.string().optional().describe("The name of the board"),
+    position: z.number().optional().describe("The position of the board"),
+    type: z.string().optional().describe("The type of the board"),
+    page: z
+      .number()
+      .optional()
+      .describe("The page number for pagination (1-indexed)"),
+    perPage: z.number().optional().describe("The number of items per page"),
+    boardId: z
+      .string()
+      .optional()
+      .describe("The ID of the board to get a summary for"),
+    includeTaskDetails: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe("Whether to include detailed task information for each card"),
+    includeComments: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe("Whether to include comments for each card"),
   },
   async (args) => {
-    const result = await projects.getProject(args.id);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
+    let result;
 
-server.tool(
-  "get_boards",
-  "Get all boards for a specific project",
-  {
-    projectId: z.string().describe("The ID of the project to get boards for"),
-  },
-  async (args) => {
-    const result = await boards.getBoards(args.projectId);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
+    switch (args.action) {
+      case "get_projects":
+        if (!args.page || !args.perPage)
+          throw new Error(
+            "page and perPage are required for get_projects action"
+          );
+        result = await projects.getProjects(args.page, args.perPage);
+        break;
 
-server.tool(
-  "create_board",
-  "Create a new board in a project",
-  {
-    projectId: z.string().describe(
-      "The ID of the project to create the board in",
-    ),
-    name: z.string().describe("The name of the new board"),
-    position: z.number().describe("The position of the board in the project"),
-  },
-  async (args) => {
-    const result = await boards.createBoard(args);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
+      case "get_project":
+        if (!args.id) throw new Error("id is required for get_project action");
+        result = await projects.getProject(args.id);
+        break;
 
-server.tool(
-  "get_board",
-  "Get a specific board by ID",
-  {
-    id: z.string().describe("The ID of the board to retrieve"),
-  },
-  async (args) => {
-    const result = await boards.getBoard(args.id);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
+      case "get_boards":
+        if (!args.projectId)
+          throw new Error("projectId is required for get_boards action");
+        result = await boards.getBoards(args.projectId);
+        break;
 
-server.tool(
-  "update_board",
-  "Update a board's properties",
-  {
-    id: z.string().describe("The ID of the board to update"),
-    name: z.string().describe("The new name for the board"),
-    type: z.string().describe("The type of the board"),
-    position: z.number().describe("The new position for the board"),
-  },
-  async (args) => {
-    const { id, ...options } = args;
-    const result = await boards.updateBoard(id, options);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
+      case "create_board":
+        if (!args.projectId || !args.name || args.position === undefined)
+          throw new Error(
+            "projectId, name, and position are required for create_board action"
+          );
+        result = await boards.createBoard({
+          projectId: args.projectId,
+          name: args.name,
+          position: args.position,
+        });
+        break;
 
-server.tool(
-  "delete_board",
-  "Delete a board by ID",
-  {
-    id: z.string().describe("The ID of the board to delete"),
-  },
-  async (args) => {
-    const result = await boards.deleteBoard(args.id);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
+      case "get_board":
+        if (!args.id) throw new Error("id is required for get_board action");
+        result = await boards.getBoard(args.id);
+        break;
 
-// Lists operations
-server.tool(
-  "get_lists",
-  "Get all lists for a specific board",
-  {
-    boardId: z.string().describe("The ID of the board to get lists for"),
-  },
-  async (args) => {
-    const result = await lists.getLists(args.boardId);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
+      case "update_board":
+        if (!args.id || !args.name || args.position === undefined)
+          throw new Error(
+            "id, name, and position are required for update_board action"
+          );
+        const boardUpdateOptions = {
+          name: args.name,
+          position: args.position,
+        } as any; // Use type assertion to avoid TypeScript errors
 
-server.tool(
-  "create_list",
-  "Create a new list in a board",
-  {
-    boardId: z.string().describe("The ID of the board to create the list in"),
-    name: z.string().describe("The name of the new list"),
-    position: z.number().describe("The position of the list in the board"),
-  },
-  async (args) => {
-    const result = await lists.createList(args);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
+        if (args.type) {
+          boardUpdateOptions.type = args.type;
+        }
 
-server.tool(
-  "update_list",
-  "Update a list's properties",
-  {
-    id: z.string().describe("The ID of the list to update"),
-    name: z.string().describe("The new name for the list"),
-    position: z.number().describe("The new position for the list"),
-  },
-  async (args) => {
-    const { id, ...options } = args;
-    const result = await lists.updateList(id, options);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
+        result = await boards.updateBoard(args.id, boardUpdateOptions);
+        break;
 
-server.tool(
-  "delete_list",
-  "Delete a list by ID",
-  {
-    id: z.string().describe("The ID of the list to delete"),
-  },
-  async (args) => {
-    const result = await lists.deleteList(args.id);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
+      case "delete_board":
+        if (!args.id) throw new Error("id is required for delete_board action");
+        result = await boards.deleteBoard(args.id);
+        break;
 
-server.tool(
-  "get_list",
-  "Get a specific list by ID",
-  {
-    id: z.string().describe("The ID of the list to retrieve"),
-  },
-  async (args) => {
-    const result = await lists.getList(args.id);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
+      case "get_board_summary":
+        if (!args.boardId)
+          throw new Error("boardId is required for get_board_summary action");
+        result = await getBoardSummary({
+          boardId: args.boardId,
+          includeTaskDetails: args.includeTaskDetails,
+          includeComments: args.includeComments,
+        });
+        break;
 
-// Cards operations
-server.tool(
-  "get_cards",
-  "Get all cards for a specific list",
-  {
-    listId: z.string().describe("The ID of the list to get cards for"),
-  },
-  async (args) => {
-    const result = await cards.getCards(args.listId);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
-
-server.tool(
-  "create_card",
-  "Create a new card in a list",
-  {
-    listId: z.string().describe("The ID of the list to create the card in"),
-    name: z.string().describe("The name of the new card"),
-    description: z.string().describe("The description of the card"),
-    position: z.number().describe("The position of the card in the list"),
-  },
-  async (args) => {
-    const result = await cards.createCard(args);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
-
-server.tool(
-  "get_card",
-  "Get a specific card by ID",
-  {
-    id: z.string().describe("The ID of the card to retrieve"),
-  },
-  async (args) => {
-    const result = await cards.getCard(args.id);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
-
-server.tool(
-  "update_card",
-  "Update a card's properties",
-  {
-    id: z.string().describe("The ID of the card to update"),
-    name: z.string().describe("The new name for the card"),
-    description: z.string().describe("The new description for the card"),
-    position: z.number().describe("The new position for the card"),
-    dueDate: z.string().optional().describe(
-      "The due date for the card (ISO format)",
-    ),
-    isCompleted: z.boolean().describe("Whether the card is completed"),
-  },
-  async (args) => {
-    const { id, ...options } = args;
-    const result = await cards.updateCard(id, options);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
-
-server.tool(
-  "move_card",
-  "Move a card to a different list or position",
-  {
-    id: z.string().describe("The ID of the card to move"),
-    listId: z.string().describe("The ID of the list to move the card to"),
-    boardId: z.string().optional().describe(
-      "The ID of the board (if moving between boards)",
-    ),
-    projectId: z.string().optional().describe(
-      "The ID of the project (if moving between projects)",
-    ),
-    position: z.number().describe("The position in the target list"),
-  },
-  async (args) => {
-    const result = await cards.moveCard(
-      args.id,
-      args.listId,
-      args.position,
-      args.boardId,
-      args.projectId,
-    );
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
-
-server.tool(
-  "duplicate_card",
-  "Duplicate a card in a list",
-  {
-    id: z.string().describe("The ID of the card to duplicate"),
-    position: z.number().describe("The position for the duplicated card"),
-  },
-  async (args) => {
-    const result = await cards.duplicateCard(args.id, args.position);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
-
-server.tool(
-  "delete_card",
-  "Delete a card by ID",
-  {
-    id: z.string().describe("The ID of the card to delete"),
-  },
-  async (args) => {
-    const result = await cards.deleteCard(args.id);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
-
-// Card Stopwatch tools
-server.tool(
-  "start_card_stopwatch",
-  "Start the stopwatch for a card to track time spent",
-  {
-    id: z.string().describe("The ID of the card to start the stopwatch for"),
-  },
-  async (args) => {
-    const result = await cards.startCardStopwatch(args.id);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
-
-server.tool(
-  "stop_card_stopwatch",
-  "Stop the stopwatch for a card",
-  {
-    id: z.string().describe("The ID of the card to stop the stopwatch for"),
-  },
-  async (args) => {
-    const result = await cards.stopCardStopwatch(args.id);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
-
-server.tool(
-  "get_card_stopwatch",
-  "Get the current stopwatch time for a card",
-  {
-    id: z.string().describe("The ID of the card to get the stopwatch time for"),
-  },
-  async (args) => {
-    const result = await cards.getCardStopwatch(args.id);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
-
-server.tool(
-  "reset_card_stopwatch",
-  "Reset the stopwatch for a card",
-  {
-    id: z.string().describe("The ID of the card to reset the stopwatch for"),
-  },
-  async (args) => {
-    const result = await cards.resetCardStopwatch(args.id);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
-
-// Labels operations
-server.tool(
-  "get_labels",
-  "Get all labels for a specific board",
-  {
-    boardId: z.string().describe("The ID of the board to get labels for"),
-  },
-  async (args) => {
-    const result = await labels.getLabels(args.boardId);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
-
-server.tool(
-  "create_label",
-  "Create a new label for a board",
-  {
-    boardId: z.string().describe("The ID of the board to create the label in"),
-    name: z.string().describe("The name of the new label"),
-    color: z.enum(labels.VALID_LABEL_COLORS).describe("The color of the label"),
-    position: z.number().describe("The position of the label in the board"),
-  },
-  async (args) => {
-    const result = await labels.createLabel(args);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
-
-server.tool(
-  "update_label",
-  "Update a label's properties",
-  {
-    id: z.string().describe("The ID of the label to update"),
-    name: z.string().describe("The new name for the label"),
-    color: z.enum(labels.VALID_LABEL_COLORS).describe(
-      "The new color for the label",
-    ),
-    position: z.number().describe("The new position for the label"),
-  },
-  async (args) => {
-    const { id, ...options } = args;
-    const result = await labels.updateLabel(id, options);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
-
-server.tool(
-  "delete_label",
-  "Delete a label by ID",
-  {
-    id: z.string().describe("The ID of the label to delete"),
-  },
-  async (args) => {
-    const result = await labels.deleteLabel(args.id);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
-
-server.tool(
-  "add_label_to_card",
-  "Add a label to a card",
-  {
-    cardId: z.string().describe("The ID of the card to add the label to"),
-    labelId: z.string().describe("The ID of the label to add to the card"),
-  },
-  async (args) => {
-    const result = await labels.addLabelToCard(args.cardId, args.labelId);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
-
-server.tool(
-  "remove_label_from_card",
-  "Remove a label from a card",
-  {
-    cardId: z.string().describe("The ID of the card to remove the label from"),
-    labelId: z.string().describe("The ID of the label to remove from the card"),
-  },
-  async (args) => {
-    const result = await labels.removeLabelFromCard(args.cardId, args.labelId);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
-
-// Tasks operations
-server.tool(
-  "get_tasks",
-  "Get all tasks for a specific card",
-  {
-    cardId: z.string().describe("The ID of the card to get tasks for"),
-  },
-  async (args) => {
-    const result = await tasks.getTasks(args.cardId);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
-
-server.tool(
-  "create_task",
-  "Create a new task for a card",
-  {
-    cardId: z.string().describe("The ID of the card to create the task in"),
-    name: z.string().describe("The name of the new task"),
-    position: z.number().describe("The position of the task in the card"),
-  },
-  async (args) => {
-    const result = await tasks.createTask(args);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
-
-server.tool(
-  "batch_create_tasks",
-  "Create multiple tasks for cards in a single operation",
-  {
-    tasks: z.array(
-      z.object({
-        cardId: z.string().describe("The ID of the card to create the task in"),
-        name: z.string().describe("The name of the new task"),
-        position: z.number().optional().describe(
-          "The position of the task in the card (optional)",
-        ),
-      }),
-    ).describe("Array of tasks to create"),
-  },
-  async (args) => {
-    const result = await tasks.batchCreateTasks(args);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
-
-server.tool(
-  "get_task",
-  "Get a specific task by ID",
-  {
-    id: z.string().describe("The ID of the task to retrieve"),
-  },
-  async (args) => {
-    const result = await tasks.getTask(args.id);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
-
-server.tool(
-  "update_task",
-  "Update a task's properties",
-  {
-    id: z.string().describe("The ID of the task to update"),
-    name: z.string().describe("The new name for the task"),
-    isCompleted: z.boolean().describe("Whether the task is completed"),
-    position: z.number().describe("The new position for the task"),
-  },
-  async (args) => {
-    const { id, ...options } = args;
-    const result = await tasks.updateTask(id, options);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
-
-server.tool(
-  "delete_task",
-  "Delete a task by ID",
-  {
-    id: z.string().describe("The ID of the task to delete"),
-  },
-  async (args) => {
-    const result = await tasks.deleteTask(args.id);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
-
-// Comments operations
-server.tool(
-  "get_comments",
-  "Get all comments for a specific card",
-  {
-    cardId: z.string().describe("The ID of the card to get comments for"),
-  },
-  async (args) => {
-    const result = await comments.getComments(args.cardId);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
-
-server.tool(
-  "create_comment",
-  "Create a new comment on a card",
-  {
-    cardId: z.string().describe("The ID of the card to create the comment on"),
-    text: z.string().describe("The text content of the comment"),
-  },
-  async (args) => {
-    const result = await comments.createComment(args);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
-
-server.tool(
-  "get_comment",
-  "Get a specific comment by ID",
-  {
-    id: z.string().describe("The ID of the comment to retrieve"),
-  },
-  async (args) => {
-    const result = await comments.getComment(args.id);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
-
-server.tool(
-  "update_comment",
-  "Update a comment's properties",
-  {
-    id: z.string().describe("The ID of the comment to update"),
-    text: z.string().describe("The new text content for the comment"),
-  },
-  async (args) => {
-    const { id, ...options } = args;
-    const result = await comments.updateComment(id, options);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
-
-server.tool(
-  "delete_comment",
-  "Delete a comment by ID",
-  {
-    id: z.string().describe("The ID of the comment to delete"),
-  },
-  async (args) => {
-    const result = await comments.deleteComment(args.id);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
-
-// Board Memberships operations
-server.tool(
-  "get_board_memberships",
-  "Get all memberships for a specific board",
-  {
-    boardId: z.string().describe("The ID of the board to get memberships for"),
-  },
-  async (args) => {
-    const result = await boardMemberships.getBoardMemberships(args.boardId);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
-
-server.tool(
-  "create_board_membership",
-  "Add a user to a board with specified permissions",
-  {
-    boardId: z.string().describe("The ID of the board to add the user to"),
-    userId: z.string().describe("The ID of the user to add to the board"),
-    role: z.enum(["editor", "viewer"]).describe(
-      "The role of the user on the board (editor or viewer)",
-    ),
-  },
-  async (args) => {
-    const result = await boardMemberships.createBoardMembership(args);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
-
-server.tool(
-  "get_board_membership",
-  "Get details about a specific board membership",
-  {
-    id: z.string().describe("The ID of the board membership to retrieve"),
-  },
-  async (args) => {
-    const result = await boardMemberships.getBoardMembership(args.id);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
-
-server.tool(
-  "update_board_membership",
-  "Update a user's permissions on a board",
-  {
-    id: z.string().describe("The ID of the board membership to update"),
-    role: z.enum(["editor", "viewer"]).describe(
-      "The new role for the user (editor or viewer)",
-    ),
-    canComment: z.boolean().describe("Whether the user can comment on cards"),
-  },
-  async (args) => {
-    const { id, ...options } = args;
-    const result = await boardMemberships.updateBoardMembership(id, options);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
-
-server.tool(
-  "delete_board_membership",
-  "Remove a user from a board",
-  {
-    id: z.string().describe("The ID of the board membership to delete"),
-  },
-  async (args) => {
-    const result = await boardMemberships.deleteBoardMembership(args.id);
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  },
-);
-
-// New combined tools that reduce API calls
-server.tool(
-  "get_board_summary",
-  "Get a comprehensive summary of a board including lists, cards, tasks, and statistics in a single call",
-  {
-    boardId: z.string().describe("The ID of the board to get a summary for"),
-    includeTaskDetails: z.boolean().optional().default(false).describe(
-      "Whether to include detailed task information for each card",
-    ),
-    includeComments: z.boolean().optional().default(false).describe(
-      "Whether to include comments for each card",
-    ),
-  },
-  async (args) => {
-    try {
-      const result = await getBoardSummary(args);
-      return {
-        content: [{ type: "text", text: JSON.stringify(result) }],
-      };
-    } catch (error) {
-      console.error("Error in get_board_summary:", error);
-      throw error;
+      default:
+        throw new Error(`Unknown action: ${args.action}`);
     }
-  },
+
+    return {
+      content: [{ type: "text", text: JSON.stringify(result) }],
+    };
+  }
 );
 
+// 2. List Manager
 server.tool(
-  "get_card_details",
-  "Get detailed information about a card including tasks, comments, labels, and analysis in a single call",
+  "mcp_kanban_list_manager",
+  "Manage kanban lists with various operations",
   {
-    cardId: z.string().describe("The ID of the card to get details for"),
+    action: z
+      .enum(["get_all", "create", "update", "delete", "get_one"])
+      .describe("The action to perform"),
+    id: z.string().optional().describe("The ID of the list"),
+    boardId: z.string().optional().describe("The ID of the board"),
+    name: z.string().optional().describe("The name of the list"),
+    position: z.number().optional().describe("The position of the list"),
   },
   async (args) => {
-    try {
-      const result = await getCardDetails(args);
-      return {
-        content: [{ type: "text", text: JSON.stringify(result) }],
-      };
-    } catch (error) {
-      console.error("Error in get_card_details:", error);
-      throw error;
+    let result;
+
+    switch (args.action) {
+      case "get_all":
+        if (!args.boardId)
+          throw new Error("boardId is required for get_all action");
+        result = await lists.getLists(args.boardId);
+        break;
+
+      case "create":
+        if (!args.boardId || !args.name || args.position === undefined)
+          throw new Error(
+            "boardId, name, and position are required for create action"
+          );
+        result = await lists.createList({
+          boardId: args.boardId,
+          name: args.name,
+          position: args.position,
+        });
+        break;
+
+      case "get_one":
+        if (!args.id) throw new Error("id is required for get_one action");
+        result = await lists.getList(args.id);
+        break;
+
+      case "update":
+        if (!args.id || !args.name || args.position === undefined)
+          throw new Error(
+            "id, name, and position are required for update action"
+          );
+        const { id, ...updateOptions } = args;
+        result = await lists.updateList(id, {
+          name: args.name,
+          position: args.position,
+        });
+        break;
+
+      case "delete":
+        if (!args.id) throw new Error("id is required for delete action");
+        result = await lists.deleteList(args.id);
+        break;
+
+      default:
+        throw new Error(`Unknown action: ${args.action}`);
     }
-  },
+
+    return {
+      content: [{ type: "text", text: JSON.stringify(result) }],
+    };
+  }
 );
 
+// 3. Card Manager
 server.tool(
-  "create_card_with_tasks",
-  "Create a new card with tasks, description, and optional comment in a single call",
+  "mcp_kanban_card_manager",
+  "Manage kanban cards with various operations",
   {
-    listId: z.string().describe("The ID of the list to create the card in"),
-    name: z.string().describe("The name of the card"),
+    action: z
+      .enum([
+        "get_all",
+        "create",
+        "get_one",
+        "update",
+        "move",
+        "duplicate",
+        "delete",
+        "create_with_tasks",
+        "get_details",
+      ])
+      .describe("The action to perform"),
+    id: z.string().optional().describe("The ID of the card"),
+    listId: z.string().optional().describe("The ID of the list"),
+    boardId: z
+      .string()
+      .optional()
+      .describe("The ID of the board (if moving between boards)"),
+    projectId: z
+      .string()
+      .optional()
+      .describe("The ID of the project (if moving between projects)"),
+    name: z.string().optional().describe("The name of the card"),
     description: z.string().optional().describe("The description of the card"),
-    tasks: z.array(z.string()).optional().describe(
-      "Array of task descriptions to create",
-    ),
-    comment: z.string().optional().describe(
-      "Optional comment to add to the card",
-    ),
-    position: z.number().optional().describe(
-      "Optional position for the card in the list",
-    ),
+    position: z.number().optional().describe("The position of the card"),
+    dueDate: z
+      .string()
+      .optional()
+      .describe("The due date for the card (ISO format)"),
+    isCompleted: z
+      .boolean()
+      .optional()
+      .describe("Whether the card is completed"),
+    tasks: z
+      .array(z.string())
+      .optional()
+      .describe(
+        "Array of task descriptions to create for create_with_tasks action"
+      ),
+    comment: z
+      .string()
+      .optional()
+      .describe("Optional comment to add to the card"),
+    cardId: z
+      .string()
+      .optional()
+      .describe("The ID of the card to get details for"),
   },
   async (args) => {
-    try {
-      const result = await createCardWithTasks(args);
-      return {
-        content: [{ type: "text", text: JSON.stringify(result) }],
-      };
-    } catch (error) {
-      console.error("Error in create_card_with_tasks:", error);
-      throw error;
+    let result;
+
+    switch (args.action) {
+      case "get_all":
+        if (!args.listId)
+          throw new Error("listId is required for get_all action");
+        result = await cards.getCards(args.listId);
+        break;
+
+      case "create":
+        if (!args.listId || !args.name)
+          throw new Error("listId and name are required for create action");
+        result = await cards.createCard({
+          listId: args.listId,
+          name: args.name,
+          description: args.description || "",
+          position: args.position || 0,
+        });
+        break;
+
+      case "get_one":
+        if (!args.id) throw new Error("id is required for get_one action");
+        result = await cards.getCard(args.id);
+        break;
+
+      case "update":
+        if (!args.id) throw new Error("id is required for update action");
+        const cardUpdateOptions = {} as any; // Use type assertion to avoid TypeScript errors
+
+        if (args.name !== undefined) cardUpdateOptions.name = args.name;
+        if (args.description !== undefined)
+          cardUpdateOptions.description = args.description;
+        if (args.position !== undefined)
+          cardUpdateOptions.position = args.position;
+        if (args.dueDate !== undefined)
+          cardUpdateOptions.dueDate = args.dueDate;
+        if (args.isCompleted !== undefined)
+          cardUpdateOptions.isCompleted = args.isCompleted;
+
+        result = await cards.updateCard(args.id, cardUpdateOptions);
+        break;
+
+      case "move":
+        if (!args.id || !args.listId || args.position === undefined)
+          throw new Error(
+            "id, listId, and position are required for move action"
+          );
+        result = await cards.moveCard(
+          args.id,
+          args.listId,
+          args.position,
+          args.boardId,
+          args.projectId
+        );
+        break;
+
+      case "duplicate":
+        if (!args.id || args.position === undefined)
+          throw new Error("id and position are required for duplicate action");
+        result = await cards.duplicateCard(args.id, args.position);
+        break;
+
+      case "delete":
+        if (!args.id) throw new Error("id is required for delete action");
+        result = await cards.deleteCard(args.id);
+        break;
+
+      case "create_with_tasks":
+        if (!args.listId || !args.name)
+          throw new Error(
+            "listId and name are required for create_with_tasks action"
+          );
+        result = await createCardWithTasks({
+          listId: args.listId,
+          name: args.name,
+          description: args.description,
+          tasks: args.tasks,
+          comment: args.comment,
+          position: args.position,
+        });
+        break;
+
+      case "get_details":
+        if (!args.cardId)
+          throw new Error("cardId is required for get_details action");
+        result = await getCardDetails({
+          cardId: args.cardId,
+        });
+        break;
+
+      default:
+        throw new Error(`Unknown action: ${args.action}`);
     }
+
+    return {
+      content: [{ type: "text", text: JSON.stringify(result) }],
+    };
+  }
+);
+
+// 4. Stopwatch Manager
+server.tool(
+  "mcp_kanban_stopwatch",
+  "Manage card stopwatches for time tracking",
+  {
+    action: z
+      .enum(["start", "stop", "get", "reset"])
+      .describe("The action to perform"),
+    id: z.string().describe("The ID of the card"),
   },
+  async (args) => {
+    let result;
+
+    switch (args.action) {
+      case "start":
+        result = await cards.startCardStopwatch(args.id);
+        break;
+
+      case "stop":
+        result = await cards.stopCardStopwatch(args.id);
+        break;
+
+      case "get":
+        result = await cards.getCardStopwatch(args.id);
+        break;
+
+      case "reset":
+        result = await cards.resetCardStopwatch(args.id);
+        break;
+
+      default:
+        throw new Error(`Unknown action: ${args.action}`);
+    }
+
+    return {
+      content: [{ type: "text", text: JSON.stringify(result) }],
+    };
+  }
+);
+
+// 5. Label Manager
+server.tool(
+  "mcp_kanban_label_manager",
+  "Manage kanban labels with various operations",
+  {
+    action: z
+      .enum([
+        "get_all",
+        "create",
+        "update",
+        "delete",
+        "add_to_card",
+        "remove_from_card",
+      ])
+      .describe("The action to perform"),
+    id: z.string().optional().describe("The ID of the label"),
+    boardId: z.string().optional().describe("The ID of the board"),
+    cardId: z.string().optional().describe("The ID of the card"),
+    labelId: z
+      .string()
+      .optional()
+      .describe("The ID of the label (for card operations)"),
+    name: z.string().optional().describe("The name of the label"),
+    color: z
+      .enum([
+        "berry-red",
+        "pumpkin-orange",
+        "lagoon-blue",
+        "pink-tulip",
+        "light-mud",
+        "orange-peel",
+        "bright-moss",
+        "antique-blue",
+        "dark-granite",
+        "lagune-blue",
+        "sunny-grass",
+        "morning-sky",
+        "light-orange",
+        "midnight-blue",
+        "tank-green",
+        "gun-metal",
+        "wet-moss",
+        "red-burgundy",
+        "light-concrete",
+        "apricot-red",
+        "desert-sand",
+        "navy-blue",
+        "egg-yellow",
+        "coral-green",
+        "light-cocoa",
+      ])
+      .optional()
+      .describe("The color of the label"),
+    position: z.number().optional().describe("The position of the label"),
+  },
+  async (args) => {
+    let result;
+
+    switch (args.action) {
+      case "get_all":
+        if (!args.boardId)
+          throw new Error("boardId is required for get_all action");
+        result = await labels.getLabels(args.boardId);
+        break;
+
+      case "create":
+        if (
+          !args.boardId ||
+          !args.name ||
+          !args.color ||
+          args.position === undefined
+        )
+          throw new Error(
+            "boardId, name, color, and position are required for create action"
+          );
+        result = await labels.createLabel({
+          boardId: args.boardId,
+          name: args.name,
+          color: args.color,
+          position: args.position,
+        });
+        break;
+
+      case "update":
+        if (
+          !args.id ||
+          !args.name ||
+          !args.color ||
+          args.position === undefined
+        )
+          throw new Error(
+            "id, name, color, and position are required for update action"
+          );
+        result = await labels.updateLabel(args.id, {
+          name: args.name,
+          color: args.color,
+          position: args.position,
+        });
+        break;
+
+      case "delete":
+        if (!args.id) throw new Error("id is required for delete action");
+        result = await labels.deleteLabel(args.id);
+        break;
+
+      case "add_to_card":
+        if (!args.cardId || !args.labelId)
+          throw new Error(
+            "cardId and labelId are required for add_to_card action"
+          );
+        result = await labels.addLabelToCard(args.cardId, args.labelId);
+        break;
+
+      case "remove_from_card":
+        if (!args.cardId || !args.labelId)
+          throw new Error(
+            "cardId and labelId are required for remove_from_card action"
+          );
+        result = await labels.removeLabelFromCard(args.cardId, args.labelId);
+        break;
+
+      default:
+        throw new Error(`Unknown action: ${args.action}`);
+    }
+
+    return {
+      content: [{ type: "text", text: JSON.stringify(result) }],
+    };
+  }
+);
+
+// 6. Task Manager
+server.tool(
+  "mcp_kanban_task_manager",
+  "Manage kanban tasks with various operations",
+  {
+    action: z
+      .enum([
+        "get_all",
+        "create",
+        "batch_create",
+        "get_one",
+        "update",
+        "delete",
+        "complete_task",
+      ])
+      .describe("The action to perform"),
+    id: z.string().optional().describe("The ID of the task"),
+    cardId: z.string().optional().describe("The ID of the card"),
+    name: z.string().optional().describe("The name of the task"),
+    isCompleted: z
+      .boolean()
+      .optional()
+      .describe("Whether the task is completed"),
+    position: z.number().optional().describe("The position of the task"),
+    tasks: z
+      .array(
+        z.object({
+          cardId: z.string().describe("The ID of the card for this task"),
+          name: z.string().describe("The name of this task"),
+          position: z.number().optional().describe("The position of this task"),
+        })
+      )
+      .optional()
+      .describe("Array of tasks to create in batch"),
+  },
+  async (args) => {
+    let result;
+
+    switch (args.action) {
+      case "get_all":
+        if (!args.cardId)
+          throw new Error("cardId is required for get_all action");
+        result = await tasks.getTasks(args.cardId);
+        break;
+
+      case "create":
+        if (!args.cardId || !args.name)
+          throw new Error("cardId and name are required for create action");
+        result = await tasks.createTask({
+          cardId: args.cardId,
+          name: args.name,
+          position: args.position,
+        });
+        break;
+
+      case "batch_create":
+        if (!args.tasks || args.tasks.length === 0)
+          throw new Error("tasks array is required for batch_create action");
+        result = await tasks.batchCreateTasks({ tasks: args.tasks });
+        break;
+
+      case "get_one":
+        if (!args.id) throw new Error("id is required for get_one action");
+        result = await tasks.getTask(args.id);
+        break;
+
+      case "update":
+        if (!args.id) throw new Error("id is required for update action");
+        const taskUpdateOptions = {} as any;
+
+        if (args.name !== undefined) taskUpdateOptions.name = args.name;
+        if (args.position !== undefined)
+          taskUpdateOptions.position = args.position;
+        if (args.isCompleted !== undefined)
+          taskUpdateOptions.isCompleted = args.isCompleted;
+
+        result = await tasks.updateTask(args.id, taskUpdateOptions);
+        break;
+
+      case "complete_task":
+        if (!args.id)
+          throw new Error("id is required for complete_task action");
+        result = await tasks.updateTask(args.id, { isCompleted: true } as any);
+        break;
+
+      case "delete":
+        if (!args.id) throw new Error("id is required for delete action");
+        result = await tasks.deleteTask(args.id);
+        break;
+
+      default:
+        throw new Error(`Unknown action: ${args.action}`);
+    }
+
+    return {
+      content: [{ type: "text", text: JSON.stringify(result) }],
+    };
+  }
+);
+
+// 7. Comment Manager
+server.tool(
+  "mcp_kanban_comment_manager",
+  "Manage card comments with various operations",
+  {
+    action: z
+      .enum(["get_all", "create", "get_one", "update", "delete"])
+      .describe("The action to perform"),
+    id: z.string().optional().describe("The ID of the comment"),
+    cardId: z.string().optional().describe("The ID of the card"),
+    text: z.string().optional().describe("The text content of the comment"),
+  },
+  async (args) => {
+    let result;
+
+    switch (args.action) {
+      case "get_all":
+        if (!args.cardId)
+          throw new Error("cardId is required for get_all action");
+        result = await comments.getComments(args.cardId);
+        break;
+
+      case "create":
+        if (!args.cardId || !args.text)
+          throw new Error("cardId and text are required for create action");
+        result = await comments.createComment({
+          cardId: args.cardId,
+          text: args.text,
+        });
+        break;
+
+      case "get_one":
+        if (!args.id) throw new Error("id is required for get_one action");
+        result = await comments.getComment(args.id);
+        break;
+
+      case "update":
+        if (!args.id || !args.text)
+          throw new Error("id and text are required for update action");
+        result = await comments.updateComment(args.id, {
+          text: args.text,
+        });
+        break;
+
+      case "delete":
+        if (!args.id) throw new Error("id is required for delete action");
+        result = await comments.deleteComment(args.id);
+        break;
+
+      default:
+        throw new Error(`Unknown action: ${args.action}`);
+    }
+
+    return {
+      content: [{ type: "text", text: JSON.stringify(result) }],
+    };
+  }
+);
+
+// 8. Membership Manager
+server.tool(
+  "mcp_kanban_membership_manager",
+  "Manage board memberships with various operations",
+  {
+    action: z
+      .enum(["get_all", "create", "get_one", "update", "delete"])
+      .describe("The action to perform"),
+    id: z.string().optional().describe("The ID of the membership"),
+    boardId: z.string().optional().describe("The ID of the board"),
+    userId: z.string().optional().describe("The ID of the user"),
+    role: z
+      .enum(["editor", "viewer"])
+      .optional()
+      .describe("The role of the user in the board"),
+    canComment: z
+      .boolean()
+      .optional()
+      .describe("Whether the user can comment on the board"),
+  },
+  async (args) => {
+    let result;
+
+    switch (args.action) {
+      case "get_all":
+        if (!args.boardId)
+          throw new Error("boardId is required for get_all action");
+        result = await boardMemberships.getBoardMemberships(args.boardId);
+        break;
+
+      case "create":
+        if (!args.boardId || !args.userId || !args.role)
+          throw new Error(
+            "boardId, userId, and role are required for create action"
+          );
+        result = await boardMemberships.createBoardMembership({
+          boardId: args.boardId,
+          userId: args.userId,
+          role: args.role,
+        });
+        break;
+
+      case "get_one":
+        if (!args.id) throw new Error("id is required for get_one action");
+        result = await boardMemberships.getBoardMembership(args.id);
+        break;
+
+      case "update":
+        if (!args.id) throw new Error("id is required for update action");
+        const membershipUpdateOptions = {} as any;
+
+        if (args.role !== undefined) membershipUpdateOptions.role = args.role;
+        if (args.canComment !== undefined)
+          membershipUpdateOptions.canComment = args.canComment;
+
+        result = await boardMemberships.updateBoardMembership(
+          args.id,
+          membershipUpdateOptions
+        );
+        break;
+
+      case "delete":
+        if (!args.id) throw new Error("id is required for delete action");
+        result = await boardMemberships.deleteBoardMembership(args.id);
+        break;
+
+      default:
+        throw new Error(`Unknown action: ${args.action}`);
+    }
+
+    return {
+      content: [{ type: "text", text: JSON.stringify(result) }],
+    };
+  }
 );
 
 async function runServer() {
@@ -832,7 +793,7 @@ async function runServer() {
   await server.connect(transport);
 }
 
-runServer().catch((error) => {
-  console.error("Server error:", error);
+runServer().catch((err) => {
+  console.error("Error running server:", err);
   process.exit(1);
 });
