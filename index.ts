@@ -11,6 +11,7 @@ import * as comments from "./operations/comments.js";
 import * as labels from "./operations/labels.js";
 import * as lists from "./operations/lists.js";
 import * as projects from "./operations/projects.js";
+import * as taskLists from "./operations/taskLists.js";
 import * as tasks from "./operations/tasks.js";
 
 // Import custom tools
@@ -83,11 +84,7 @@ server.tool(
 
     switch (args.action) {
       case "get_projects":
-        if (!args.page || !args.perPage)
-          throw new Error(
-            "page and perPage are required for get_projects action"
-          );
-        result = await projects.getProjects(args.page, args.perPage);
+        result = await projects.getProjects(args.page || 1, args.perPage || 50);
         break;
 
       case "get_project":
@@ -119,20 +116,14 @@ server.tool(
         break;
 
       case "update_board":
-        if (!args.id || !args.name || args.position === undefined)
-          throw new Error(
-            "id, name, and position are required for update_board action"
-          );
-        const boardUpdateOptions = {
+        if (!args.id)
+          throw new Error("id is required for update_board action");
+        
+        result = await boards.updateBoard(args.id, {
           name: args.name,
           position: args.position,
-        } as any; // Use type assertion to avoid TypeScript errors
-
-        if (args.type) {
-          boardUpdateOptions.type = args.type;
-        }
-
-        result = await boards.updateBoard(args.id, boardUpdateOptions);
+          defaultCardType: args.type as any,
+        });
         break;
 
       case "delete_board":
@@ -172,6 +163,8 @@ server.tool(
     boardId: z.string().optional().describe("The ID of the board"),
     name: z.string().optional().describe("The name of the list"),
     position: z.number().optional().describe("The position of the list"),
+    type: z.enum(["active", "closed", "archive", "trash"]).optional().describe("The type of the list"),
+    color: z.string().optional().describe("The color of the list"),
   },
   async (args) => {
     let result;
@@ -201,14 +194,13 @@ server.tool(
         break;
 
       case "update":
-        if (!args.id || !args.name || args.position === undefined)
-          throw new Error(
-            "id, name, and position are required for update action"
-          );
-        const { id, ...updateOptions } = args;
-        result = await lists.updateList(id, {
+        if (!args.id)
+          throw new Error("id is required for update action");
+        result = await lists.updateList(args.id, {
           name: args.name,
           position: args.position,
+          type: args.type as any,
+          color: args.color,
         });
         break;
 
@@ -256,6 +248,7 @@ server.tool(
       .optional()
       .describe("The ID of the project (if moving between projects)"),
     name: z.string().optional().describe("The name of the card"),
+    type: z.enum(["project", "story"]).optional().describe("The type of the card (project or story)"),
     description: z.string().optional().describe("The description of the card"),
     position: z.number().optional().describe("The position of the card"),
     dueDate: z
@@ -266,6 +259,10 @@ server.tool(
       .boolean()
       .optional()
       .describe("Whether the card is completed"),
+    isClosed: z
+      .boolean()
+      .optional()
+      .describe("Whether the card is closed"),
     tasks: z
       .array(z.string())
       .optional()
@@ -292,13 +289,14 @@ server.tool(
         break;
 
       case "create":
-        if (!args.listId || !args.name)
-          throw new Error("listId and name are required for create action");
+        if (!args.listId || !args.name || !args.type)
+          throw new Error("listId, name and type (project|story) are required for create action");
         result = await cards.createCard({
-          listId: args.listId,
-          name: args.name,
-          description: args.description || "",
-          position: args.position || 0,
+          listId: args.listId as string,
+          name: args.name as string,
+          type: args.type as "project" | "story",
+          description: (args.description as string) || "",
+          position: (args.position as number) || 65535,
         });
         break;
 
@@ -309,19 +307,15 @@ server.tool(
 
       case "update":
         if (!args.id) throw new Error("id is required for update action");
-        const cardUpdateOptions = {} as any; // Use type assertion to avoid TypeScript errors
-
-        if (args.name !== undefined) cardUpdateOptions.name = args.name;
-        if (args.description !== undefined)
-          cardUpdateOptions.description = args.description;
-        if (args.position !== undefined)
-          cardUpdateOptions.position = args.position;
-        if (args.dueDate !== undefined)
-          cardUpdateOptions.dueDate = args.dueDate;
-        if (args.isCompleted !== undefined)
-          cardUpdateOptions.isCompleted = args.isCompleted;
-
-        result = await cards.updateCard(args.id, cardUpdateOptions);
+        
+        result = await cards.updateCard(args.id, {
+          name: args.name,
+          description: args.description,
+          position: args.position,
+          dueDate: args.dueDate,
+          isCompleted: args.isCompleted,
+          isClosed: args.isClosed,
+        });
         break;
 
       case "move":
@@ -333,8 +327,7 @@ server.tool(
           args.id,
           args.listId,
           args.position,
-          args.boardId,
-          args.projectId
+          args.boardId
         );
         break;
 
@@ -447,31 +440,15 @@ server.tool(
     name: z.string().optional().describe("The name of the label"),
     color: z
       .enum([
-        "berry-red",
-        "pumpkin-orange",
-        "lagoon-blue",
-        "pink-tulip",
-        "light-mud",
-        "orange-peel",
-        "bright-moss",
-        "antique-blue",
-        "dark-granite",
-        "lagune-blue",
-        "sunny-grass",
-        "morning-sky",
-        "light-orange",
-        "midnight-blue",
-        "tank-green",
-        "gun-metal",
-        "wet-moss",
-        "red-burgundy",
-        "light-concrete",
-        "apricot-red",
-        "desert-sand",
-        "navy-blue",
-        "egg-yellow",
-        "coral-green",
-        "light-cocoa",
+        "muddy-grey", "autumn-leafs", "morning-sky", "antique-blue", "egg-yellow",
+        "desert-sand", "dark-granite", "fresh-salad", "lagoon-blue", "midnight-blue",
+        "light-orange", "pumpkin-orange", "light-concrete", "sunny-grass", "navy-blue",
+        "lilac-eyes", "apricot-red", "orange-peel", "silver-glint", "bright-moss",
+        "deep-ocean", "summer-sky", "berry-red", "light-cocoa", "grey-stone",
+        "tank-green", "coral-green", "sugar-plum", "pink-tulip", "shady-rust",
+        "wet-rock", "wet-moss", "turquoise-sea", "lavender-fields", "piggy-red",
+        "light-mud", "gun-metal", "modern-green", "french-coast", "sweet-lilac",
+        "red-burgundy", "pirate-gold"
       ])
       .optional()
       .describe("The color of the label"),
@@ -491,33 +468,25 @@ server.tool(
         if (
           !args.boardId ||
           !args.name ||
-          !args.color ||
-          args.position === undefined
+          !args.color
         )
           throw new Error(
-            "boardId, name, color, and position are required for create action"
+            "boardId, name, and color are required for create action"
           );
         result = await labels.createLabel({
           boardId: args.boardId,
           name: args.name,
-          color: args.color,
+          color: args.color as any,
           position: args.position,
         });
         break;
 
       case "update":
-        if (
-          !args.id ||
-          !args.name ||
-          !args.color ||
-          args.position === undefined
-        )
-          throw new Error(
-            "id, name, color, and position are required for update action"
-          );
+        if (!args.id)
+          throw new Error("id is required for update action");
         result = await labels.updateLabel(args.id, {
           name: args.name,
-          color: args.color,
+          color: args.color as any,
           position: args.position,
         });
         break;
@@ -553,7 +522,68 @@ server.tool(
   }
 );
 
-// 6. Task Manager
+// 6. Task List Manager (New for v2.0)
+server.tool(
+  "mcp_kanban_task_list_manager",
+  "Manage task lists with various operations (Planka v2.0)",
+  {
+    action: z
+      .enum(["get_all", "create", "update", "delete", "get_one"])
+      .describe("The action to perform"),
+    id: z.string().optional().describe("The ID of the task list"),
+    cardId: z.string().optional().describe("The ID of the card"),
+    name: z.string().optional().describe("The name of the task list"),
+    position: z.number().optional().describe("The position of the task list"),
+  },
+  async (args) => {
+    let result;
+
+    switch (args.action) {
+      case "get_all":
+        if (!args.cardId)
+          throw new Error("cardId is required for get_all action");
+        result = await taskLists.getTaskLists(args.cardId);
+        break;
+
+      case "create":
+        if (!args.cardId || !args.name)
+          throw new Error("cardId and name are required for create action");
+        result = await taskLists.createTaskList({
+          cardId: args.cardId,
+          name: args.name,
+          position: args.position,
+        });
+        break;
+
+      case "get_one":
+        if (!args.id) throw new Error("id is required for get_one action");
+        result = await taskLists.getTaskList(args.id);
+        break;
+
+      case "update":
+        if (!args.id) throw new Error("id is required for update action");
+        result = await taskLists.updateTaskList(args.id, {
+          name: args.name,
+          position: args.position,
+        });
+        break;
+
+      case "delete":
+        if (!args.id) throw new Error("id is required for delete action");
+        result = await taskLists.deleteTaskList(args.id);
+        break;
+
+      default:
+        throw new Error(`Unknown action: ${args.action}`);
+    }
+
+    return {
+      content: [{ type: "text", text: JSON.stringify(result) }],
+    };
+  }
+);
+
+// 7. Task Manager
 server.tool(
   "mcp_kanban_task_manager",
   "Manage kanban tasks with various operations",
@@ -570,7 +600,8 @@ server.tool(
       ])
       .describe("The action to perform"),
     id: z.string().optional().describe("The ID of the task"),
-    cardId: z.string().optional().describe("The ID of the card"),
+    cardId: z.string().optional().describe("The ID of the card (flattens all lists)"),
+    taskListId: z.string().optional().describe("The ID of the task list (v2 direct)"),
     name: z.string().optional().describe("The name of the task"),
     isCompleted: z
       .boolean()
@@ -580,7 +611,8 @@ server.tool(
     tasks: z
       .array(
         z.object({
-          cardId: z.string().describe("The ID of the card for this task"),
+          cardId: z.string().optional().describe("The ID of the card"),
+          taskListId: z.string().optional().describe("The ID of the task list"),
           name: z.string().describe("The name of this task"),
           position: z.number().optional().describe("The position of this task"),
         })
@@ -593,16 +625,20 @@ server.tool(
 
     switch (args.action) {
       case "get_all":
-        if (!args.cardId)
-          throw new Error("cardId is required for get_all action");
-        result = await tasks.getTasks(args.cardId);
+        if (args.taskListId) {
+            result = await tasks.getTaskListTasks(args.taskListId);
+        } else if (args.cardId) {
+            result = await tasks.getTasks(args.cardId);
+        } else {
+            throw new Error("Either cardId or taskListId is required for get_all action");
+        }
         break;
 
       case "create":
-        if (!args.cardId || !args.name)
-          throw new Error("cardId and name are required for create action");
+        if (!args.name) throw new Error("name is required for create action");
         result = await tasks.createTask({
           cardId: args.cardId,
+          taskListId: args.taskListId,
           name: args.name,
           position: args.position,
         });
@@ -611,7 +647,7 @@ server.tool(
       case "batch_create":
         if (!args.tasks || args.tasks.length === 0)
           throw new Error("tasks array is required for batch_create action");
-        result = await tasks.batchCreateTasks({ tasks: args.tasks });
+        result = await tasks.batchCreateTasks({ tasks: args.tasks as any });
         break;
 
       case "get_one":
@@ -621,21 +657,17 @@ server.tool(
 
       case "update":
         if (!args.id) throw new Error("id is required for update action");
-        const taskUpdateOptions = {} as any;
-
-        if (args.name !== undefined) taskUpdateOptions.name = args.name;
-        if (args.position !== undefined)
-          taskUpdateOptions.position = args.position;
-        if (args.isCompleted !== undefined)
-          taskUpdateOptions.isCompleted = args.isCompleted;
-
-        result = await tasks.updateTask(args.id, taskUpdateOptions);
+        result = await tasks.updateTask(args.id, {
+          name: args.name,
+          position: args.position,
+          isCompleted: args.isCompleted,
+        });
         break;
 
       case "complete_task":
         if (!args.id)
           throw new Error("id is required for complete_task action");
-        result = await tasks.updateTask(args.id, { isCompleted: true } as any);
+        result = await tasks.updateTask(args.id, { isCompleted: true });
         break;
 
       case "delete":
@@ -653,7 +685,7 @@ server.tool(
   }
 );
 
-// 7. Comment Manager
+// 8. Comment Manager
 server.tool(
   "mcp_kanban_comment_manager",
   "Manage card comments with various operations",
@@ -712,7 +744,7 @@ server.tool(
   }
 );
 
-// 8. Membership Manager
+// 9. Membership Manager
 server.tool(
   "mcp_kanban_membership_manager",
   "Manage board memberships with various operations",
@@ -722,6 +754,7 @@ server.tool(
       .describe("The action to perform"),
     id: z.string().optional().describe("The ID of the membership"),
     boardId: z.string().optional().describe("The ID of the board"),
+    projectId: z.string().optional().describe("The ID of the project"),
     userId: z.string().optional().describe("The ID of the user"),
     role: z
       .enum(["editor", "viewer"])
@@ -739,7 +772,7 @@ server.tool(
       case "get_all":
         if (!args.boardId)
           throw new Error("boardId is required for get_all action");
-        result = await boardMemberships.getBoardMemberships(args.boardId);
+        result = await boardMemberships.getBoardMemberships(args.boardId, args.projectId);
         break;
 
       case "create":
@@ -751,6 +784,7 @@ server.tool(
           boardId: args.boardId,
           userId: args.userId,
           role: args.role,
+          projectId: args.projectId,
         });
         break;
 
@@ -761,16 +795,10 @@ server.tool(
 
       case "update":
         if (!args.id) throw new Error("id is required for update action");
-        const membershipUpdateOptions = {} as any;
-
-        if (args.role !== undefined) membershipUpdateOptions.role = args.role;
-        if (args.canComment !== undefined)
-          membershipUpdateOptions.canComment = args.canComment;
-
-        result = await boardMemberships.updateBoardMembership(
-          args.id,
-          membershipUpdateOptions
-        );
+        result = await boardMemberships.updateBoardMembership(args.id, {
+            role: args.role,
+            canComment: args.canComment,
+        });
         break;
 
       case "delete":

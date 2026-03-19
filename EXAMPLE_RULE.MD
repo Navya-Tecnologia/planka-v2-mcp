@@ -15,6 +15,7 @@ This guide provides instructions for LLMs on effectively using consolidated Kanb
 mcp_kanban_project_board_manager({ action: "get_projects" })
 mcp_kanban_project_board_manager({ action: "get_boards", projectId: "proj_id" })
 mcp_kanban_list_manager({ action: "get_all", boardId: "board_id" })
+mcp_kanban_task_list_manager({ action: "get_all", cardId: "card_id" }) // Get task lists for a card
 ```
 
 ### 2.2 Card Inventory
@@ -48,16 +49,22 @@ mcp_kanban_stopwatch({ action: "start", id: "card_id" })
 
 ### 3.2 Task Implementation
 ```
-// Get tasks
-mcp_kanban_task_manager({ action: "get_all", cardId: "card_id" })
+// Get task lists and tasks
+mcp_kanban_task_list_manager({ action: "get_all", cardId: "card_id" })
+mcp_kanban_task_manager({ action: "get_all", taskListId: "task_list_id" })
 
 // Complete task
 mcp_kanban_task_manager({ action: "complete_task", id: "task_id" })
 
-// Add new task
-mcp_kanban_task_manager({
+// Add new task list and task
+mcp_kanban_task_list_manager({
   action: "create",
   cardId: "card_id",
+  name: "Implementation Tasks"
+})
+mcp_kanban_task_manager({
+  action: "create",
+  taskListId: "task_list_id",
   name: "New task description"
 })
 ```

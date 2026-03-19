@@ -3,3 +3,6 @@ node_modules/
 .cursorrules
 .cursor/mcp.json
 .cursor
+.env
+.agent/
+*swagger.json

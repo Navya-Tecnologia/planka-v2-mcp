@@ -5,17 +5,20 @@ export const PlankaUserSchema = z.object({
   id: z.string(),
   email: z.string(),
   name: z.string().nullable(),
-  username: z.string(),
+  username: z.string().nullable(),
   avatarUrl: z.string().nullable(),
-  createdAt: z.string(),
+  createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
 });
 
 export const PlankaProjectSchema = z.object({
   id: z.string(),
   name: z.string(),
-  background: z.string().nullable(),
-  createdAt: z.string(),
+  description: z.string().nullable(),
+  backgroundType: z.enum(["gradient", "image"]).nullable(),
+  backgroundGradient: z.string().nullable(),
+  backgroundImageId: z.string().nullable(),
+  createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
 });
 
@@ -24,7 +27,10 @@ export const PlankaBoardSchema = z.object({
   projectId: z.string(),
   name: z.string(),
   position: z.number(),
-  createdAt: z.string(),
+  defaultView: z.enum(["kanban", "grid", "list"]).optional(),
+  defaultCardType: z.enum(["project", "story"]).optional(),
+  expandTaskListsByDefault: z.boolean().optional(),
+  createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
 });
 
@@ -32,17 +38,19 @@ export const PlankaListSchema = z.object({
   id: z.string(),
   boardId: z.string(),
   name: z.string(),
-  position: z.number(),
-  createdAt: z.string(),
+  type: z.enum(["active", "closed", "archive", "trash"]).optional(),
+  position: z.number().nullable(),
+  color: z.string().nullable().optional(),
+  createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
 });
 
 export const PlankaLabelSchema = z.object({
   id: z.string(),
   boardId: z.string(),
-  name: z.string(),
+  name: z.string().nullable(),
   color: z.string(),
-  createdAt: z.string(),
+  createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
 });
 
@@ -55,42 +63,59 @@ export const PlankaStopwatchSchema = z.object({
 export const PlankaCardSchema = z.object({
   id: z.string(),
   listId: z.string(),
+  boardId: z.string().optional(),
   name: z.string(),
+  type: z.enum(["project", "story"]),
   description: z.string().nullable(),
-  position: z.number(),
+  position: z.number().nullable(),
   dueDate: z.string().nullable(),
-  isCompleted: z.boolean().optional(),
+  isDueCompleted: z.boolean().nullable().optional(),
   stopwatch: PlankaStopwatchSchema.nullable().optional(),
-  createdAt: z.string(),
+  commentsTotal: z.number().optional(),
+  isClosed: z.boolean().optional(),
+  createdAt: z.string().nullable(),
+  updatedAt: z.string().nullable(),
+});
+
+export const PlankaTaskListSchema = z.object({
+  id: z.string(),
+  cardId: z.string(),
+  name: z.string(),
+  position: z.number(),
+  showOnFrontOfCard: z.boolean().optional(),
+  hideCompletedTasks: z.boolean().optional(),
+  createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
 });
 
 export const PlankaTaskSchema = z.object({
   id: z.string(),
-  cardId: z.string(),
+  taskListId: z.string(),
   name: z.string(),
   isCompleted: z.boolean(),
   position: z.number(),
-  createdAt: z.string(),
+  assigneeUserId: z.string().nullable().optional(),
+  createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
 });
 
 export const PlankaCommentSchema = z.object({
   id: z.string(),
   cardId: z.string(),
-  userId: z.string(),
+  userId: z.string().nullable(),
   text: z.string(),
-  createdAt: z.string(),
+  createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
 });
 
 export const PlankaAttachmentSchema = z.object({
   id: z.string(),
   cardId: z.string(),
-  userId: z.string(),
+  creatorUserId: z.string().nullable(),
   name: z.string(),
-  url: z.string(),
-  createdAt: z.string(),
+  type: z.enum(["file", "link"]).optional(),
+  url: z.string().optional(),
+  createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
 });
 
@@ -98,7 +123,7 @@ export const PlankaCardMembershipSchema = z.object({
   id: z.string(),
   cardId: z.string(),
   userId: z.string(),
-  createdAt: z.string(),
+  createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
 });
 
@@ -106,26 +131,27 @@ export const PlankaBoardMembershipSchema = z.object({
   id: z.string(),
   boardId: z.string(),
   userId: z.string(),
-  role: z.enum(["editor", "admin"]),
-  createdAt: z.string(),
-  updatedAt: z.string(),
+  role: z.enum(["editor", "admin", "viewer"]),
+  canComment: z.boolean().nullable().optional(),
+  createdAt: z.string().nullable(),
+  updatedAt: z.string().nullable(),
 });
 
 export const PlankaProjectMembershipSchema = z.object({
   id: z.string(),
   projectId: z.string(),
   userId: z.string(),
-  role: z.enum(["editor", "admin"]),
-  createdAt: z.string(),
-  updatedAt: z.string(),
+  role: z.enum(["editor", "admin", "viewer"]),
+  createdAt: z.string().nullable(),
+  updatedAt: z.string().nullable(),
 });
 
 export const PlankaCardLabelSchema = z.object({
   id: z.string(),
   cardId: z.string(),
   labelId: z.string(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
+  createdAt: z.string().nullable(),
+  updatedAt: z.string().nullable(),
 });
 
 // Type exports for Planka
@@ -135,6 +161,7 @@ export type PlankaBoard = z.infer<typeof PlankaBoardSchema>;
 export type PlankaList = z.infer<typeof PlankaListSchema>;
 export type PlankaLabel = z.infer<typeof PlankaLabelSchema>;
 export type PlankaCard = z.infer<typeof PlankaCardSchema>;
+export type PlankaTaskList = z.infer<typeof PlankaTaskListSchema>;
 export type PlankaTask = z.infer<typeof PlankaTaskSchema>;
 export type PlankaComment = z.infer<typeof PlankaCommentSchema>;
 export type PlankaAttachment = z.infer<typeof PlankaAttachmentSchema>;
@@ -144,3 +171,4 @@ export type PlankaProjectMembership = z.infer<
   typeof PlankaProjectMembershipSchema
 >;
 export type PlankaCardLabel = z.infer<typeof PlankaCardLabelSchema>;
+

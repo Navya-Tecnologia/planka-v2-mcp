@@ -132,6 +132,19 @@ Consolidates 5 tools: `get_board_memberships`, `create_board_membership`, `get_b
 }
 ```
 
+### 9. `mcp_kanban_task_list_manager`
+New tool for Planka v2.0 to manage Task Lists within cards.
+
+```typescript
+{
+  action: z.enum(["get_all", "create", "get_one", "update", "delete"]),
+  id: z.string().optional(),
+  cardId: z.string().optional(),
+  name: z.string().optional(),
+  position: z.number().optional()
+}
+```
+
 ## Implementation Example
 
 Here's an example implementation for the `mcp_kanban_card_manager`:
@@ -323,9 +336,10 @@ server.tool(
 | Task Management | 6 | 1 |
 | Comment Management | 5 | 1 |
 | Membership Management | 5 | 1 |
-| **TOTAL** | **45** | **8** |
+| Task List Management (v2.0) | N/A | 1 |
+| **TOTAL** | **45** | **9** |
 
-This consolidation reduces the tool count from 45 to 8, well under the 40-tool limit, while maintaining all the original capabilities through the use of action parameters.
+This consolidation reduces the tool count from 45 to 9, well under the 40-tool limit, while maintaining all the original capabilities through the use of action parameters and supporting Planka v2.0 hierarchy.
 
 ## Implementation Steps
 

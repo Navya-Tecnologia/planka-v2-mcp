@@ -109,7 +109,15 @@ export async function plankaRequest(
   // Ensure path starts with /api/
   const normalizedPath = path.startsWith("/api/") ? path : `/api/${path}`;
 
-  const url = new URL(normalizedPath, normalizedBaseUrl).toString();
+  const urlObj = new URL(normalizedPath, normalizedBaseUrl);
+  
+  // SSRF Protection: Ensure we don't accidentally redirect to a different host via normalizedPath
+  const baseHost = new URL(normalizedBaseUrl).host;
+  if (urlObj.host !== baseHost) {
+    throw new Error(`Security violation: Target host ${urlObj.host} does not match base host ${baseHost}`);
+  }
+
+  const url = urlObj.toString();
 
   const headers: Record<string, string> = {
     "Accept": "application/json",
@@ -136,6 +144,13 @@ export async function plankaRequest(
     }
   }
 
+  // Handle SSL certificate verification bypass for internal networks
+  if (process.env.PLANKA_IGNORE_SSL === "true") {
+    // Note: Setting this globally affects the whole process, but it's a common 
+    // workaround for internal servers with self-signed certs.
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+  }
+
   try {
     const response = await fetch(url, {
       method: options.method || "GET",
@@ -157,7 +172,8 @@ export async function plankaRequest(
     return responseBody;
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    throw new Error(`Failed to make Planka request to ${url}: ${errorMessage}`);
+    // Security: Do not leak the full URL in logs/errors as it might contain sensitive path IDs or be used for SSRF analysis
+    throw new Error(`Failed to make Planka request: ${errorMessage}`);
   }
 }
 

@@ -108,9 +108,8 @@ export async function getCardDetails(params: GetCardDetailsParams) {
         // Check if the most recent comment is likely from a human (not the LLM)
         // This is a heuristic and might need adjustment
         const hasRecentHumanFeedback = sortedComments.length > 0 &&
-            sortedComments[0].data &&
-            !sortedComments[0].data.text.includes("Implemented feature") &&
-            !sortedComments[0].data.text.includes("Awaiting human review");
+            !sortedComments[0].text.includes("Implemented feature") &&
+            !sortedComments[0].text.includes("Awaiting human review");
 
         return {
             card,
