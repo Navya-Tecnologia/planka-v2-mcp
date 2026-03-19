@@ -36,9 +36,11 @@ All functionality is grouped into **Manager Tools**. Each tool accepts an `actio
 
 ## 🗂️ Card Management
 **Tool**: `mcp_kanban_card_manager`
-
 - **Actions**: `get_all`, `create`, `get_one`, `update`, `move`, `duplicate`, `delete`.
-- **v2.x Features**: `move` action supports moving between boards. `update` supports `isClosed`.
+- **v2.x Features**:
+  - `create`: Defaults to `type: "project"`.
+  - `update`: Now supports changing the **Card Type** (`project` or `story`).
+  - `move`: Supports moving cards between boards.
 
 ---
 
@@ -88,8 +90,15 @@ All functionality is grouped into **Manager Tools**. Each tool accepts an `actio
 
 ---
 
-## 👥 Membership Management
-**Tool**: `mcp_kanban_membership_manager`
+## 👤 Card Membership (Assignment)
+**Tool**: `mcp_kanban_card_membership_manager`
+- **Actions**: `get_all`, `create`, `delete`, `get_users`.
+- **Unified Resolution**: Supports resolving users by `id`, `email`, or `username` automatically.
+- **Parameters**: `cardId`, `userId` (optional), `email` (optional), `username` (optional).
 
+---
+
+## 👥 Board Membership Management
+**Tool**: `mcp_kanban_membership_manager`
 - **Actions**: `get_all`, `create`, `get_one`, `update`, `delete`.
 - **v2.0 Features**: Supports `viewer` role and `canComment` permission.

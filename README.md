@@ -10,6 +10,8 @@ A specialized Model Context Protocol (MCP) server that enables LLMs (like Claude
 - **📂 Task List Management**: Full support for the new Task List entity introduced in Planka v2.0.
 - **✅ Granular Task Tracking**: Create and complete tasks within specific Task Lists inside cards.
 - **⏱️ Persistent Time Tracking**: Start and stop stopwatches on cards; time is tracked directly in Planka.
+- **👥 Unified Membership Management**: Assign users to cards by **Email** or **Username** without needing their ID first.
+- **🚀 Project-First Defaults**: New cards are created as **type "project"** by default to ensure subtasks and checklists are immediately visible.
 - **🗂️ Consolidated Managers**: Grouped tools (Card Manager, Project Manager, etc.) to optimize LLM interaction and stay under tool limits.
 - **🏷️ Advanced Labeling**: Full support for v2.x color palettes and label assignment.
 
@@ -53,10 +55,10 @@ If you have the code locally, pointing to the built file:
 }
 ```
 
-### 3. Usage
 Ask Claude:
 - "Groom the Backlog board and break down the top card into tasks."
 - "Start tracking time for the UI Implementation card."
+- "Assign @rpalacios to the card 'Release MCP-AFFINE'."
 - "Create a new 'Database' Task List in the migration card."
 
 ## 📖 Documentation

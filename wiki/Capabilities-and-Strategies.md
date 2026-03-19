@@ -10,18 +10,21 @@ The MCP Kanban server serves as an intermediary layer that provides LLMs with a 
 
 1. **🧩 Consolidated Manager Tools**: Operations are grouped into "Managers" (e.g., `mcp_kanban_card_manager`). This significantly reduces the tool count, ensuring compatibility with Cursor's 40-tool limit.
 2. **📂 Task List Hierarchy (v2.0)**: The server handles the new Planka v2.0 hierarchy where tasks are nested within Task Lists.
-3. **🔝 Higher-Level Operations**: Provides functions like `batch_create` for tasks and `duplicate` for cards to abstract complexity.
-4. **💾 State Persistence**: Maintains state and stopwatches across different chat sessions.
-5. **🔐 Authentication Management**: Handles OIDC-compliant authentication and token rotation.
+3. **👥 User Identity Resolution**: Resolves users by email or username, simplifying assignments for AI agents.
+4. **🚀 Smart Defaults**: Automatically sets new cards to `type: "project"` to ensure subtasks and checklists are immediately visible to the agent.
+5. **🔝 Higher-Level Operations**: Provides functions like `batch_create` for tasks and `duplicate` for cards to abstract complexity.
+6. **💾 State Persistence**: Maintains state and stopwatches across different chat sessions.
+7. **🔐 Authentication Management**: Handles OIDC-compliant authentication and token rotation.
 
 ### 🌟 Key Capabilities for LLMs
 
 The MCP Server enables LLMs to:
 1. **📋 Access Kanban Data**: Projects, boards, lists, cards, task lists, tasks, comments, and labels.
 2. **📂 Manage Task Lists**: Create and organize containers for tasks within cards.
-3. **✅ Track Tasks**: Create and complete tasks with precise placement in Task Lists.
-4. **🔄 Manage Workflow**: Move cards between lists and even across different boards.
-5. **⏱️ Monitor Time**: Accurate time tracking with persistent stopwatches.
+3. **👥 Assign Users**: Assign members to boards and specific cards using human-readable identifiers (email/username).
+4. **✅ Track Tasks**: Create and complete tasks with precise placement in Task Lists.
+5. **🔄 Manage Workflow**: Move cards between lists and even across different boards.
+6. **⏱️ Monitor Time**: Accurate time tracking with persistent stopwatches.
 
 ## 🤖 LLM Interaction Strategies
 

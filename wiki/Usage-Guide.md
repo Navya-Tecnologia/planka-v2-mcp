@@ -19,6 +19,7 @@ The Kanban MCP provides several consolidated managers that Claude can use to int
 ### 🗂️ Card Management
 **Tool**: `mcp_kanban_card_manager`
 - **Actions**: `get_all`, `create`, `get_one`, `update`, `move`, `duplicate`, `delete`.
+- **Project-First Defaults**: New cards are created as **type "project"** by default. To create a story, explicitly specify the type.
 - **Note**: Cards in v2.x support `isClosed` status and enhanced positioning.
 
 ### ⏱️ Time Tracking
@@ -43,6 +44,11 @@ The Kanban MCP provides several consolidated managers that Claude can use to int
 ### 🏷️ Label Management
 **Tool**: `mcp_kanban_label_manager`
 - **Actions**: `get_all`, `create`, `update`, `delete`, `add_to_card`, `remove_from_card`.
+
+### 👥 Card Assignment (Membership)
+**Tool**: `mcp_kanban_card_membership_manager`
+- **Actions**: `create`, `delete`, `get_all`, `get_users`.
+- **Simplified usage**: Assign users by `email` or `username`. The server automatically finds the ID for you.
 
 ## 🤔 Using Kanban MCP with Claude
 

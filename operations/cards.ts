@@ -21,8 +21,8 @@ import { PlankaCardSchema, PlankaStopwatchSchema } from "../common/types.js";
 export const CreateCardSchema = z.object({
   listId: z.string().describe("List ID"),
   name: z.string().describe("Card name"),
-  type: z.enum(["project", "story"]).describe("Card type (project or story)"),
-  description: z.string().optional().describe("Card description"),
+  type: z.enum(["project", "story"]).optional().default("project").describe("Card type (project or story)"),
+  description: z.string().nullable().optional().describe("Card description"),
   position: z.number().optional().describe("Card position (default: 65535)"),
 });
 
@@ -55,7 +55,8 @@ export const GetCardSchema = z.object({
 export const UpdateCardSchema = z.object({
   id: z.string().describe("Card ID"),
   name: z.string().optional().describe("Card name"),
-  description: z.string().optional().describe("Card description"),
+  type: z.enum(["project", "story"]).optional().describe("Card type"),
+  description: z.string().nullable().optional().describe("Card description"),
   position: z.number().optional().describe("Card position"),
   dueDate: z.string().optional().describe("Card due date (ISO format)"),
   isCompleted: z.boolean().optional().describe("Whether the card is completed"),

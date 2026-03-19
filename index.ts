@@ -14,6 +14,9 @@ import * as lists from "./operations/lists.js";
 import * as projects from "./operations/projects.js";
 import * as taskLists from "./operations/taskLists.js";
 import * as tasks from "./operations/tasks.js";
+import * as users from "./operations/users.js";
+import * as cardMemberships from "./operations/cardMemberships.js";
+import { getUserIdByEmail, getUserIdByUsername } from "./common/utils.js";
 
 // Import custom tools
 import {
@@ -320,13 +323,13 @@ server.tool(
         break;
 
       case "create":
-        if (!args.listId || !args.name || !args.type)
-          throw new Error("listId, name and type (project|story) are required for create action");
+        if (!args.listId || !args.name)
+          throw new Error("listId and name are required for create action");
         result = await cards.createCard({
           listId: args.listId as string,
           name: args.name as string,
-          type: args.type as "project" | "story",
-          description: (args.description as string) || "",
+          type: (args.type as "project" | "story") || "project",
+          description: (args.description as string) || null,
           position: (args.position as number) || 65535,
         });
         break;
@@ -342,6 +345,7 @@ server.tool(
         result = await cards.updateCard(args.id, {
           name: args.name,
           description: args.description,
+          type: args.type as any,
           position: args.position,
           dueDate: args.dueDate,
           isCompleted: args.isCompleted,
@@ -835,6 +839,104 @@ server.tool(
       case "delete":
         if (!args.id) throw new Error("id is required for delete action");
         result = await boardMemberships.deleteBoardMembership(args.id);
+        break;
+
+      default:
+        throw new Error(`Unknown action: ${args.action}`);
+    }
+
+    return {
+      content: [{ type: "text", text: JSON.stringify(result) }],
+    };
+  }
+);
+
+// 10. Card Membership Manager (with user resolution)
+server.tool(
+  "mcp_kanban_card_membership_manager",
+  "Manage memberships of a card (assign users by ID, email, or username)",
+  {
+    action: z
+      .enum(["get_all", "create", "delete", "get_users"])
+      .describe("The action to perform"),
+    cardId: z.string().optional().describe("The ID of the card"),
+    userId: z.string().optional().describe("The ID of the user"),
+    email: z.string().optional().describe("The email of the user"),
+    username: z.string().optional().describe("The username of the user"),
+  },
+  async (args) => {
+    let result;
+
+    // Helper to resolve userId from email or username
+    const resolveUserId = async () => {
+      if (args.userId) return args.userId;
+      if (args.email) return await getUserIdByEmail(args.email);
+      if (args.username) return await getUserIdByUsername(args.username);
+      return null;
+    };
+
+    switch (args.action) {
+      case "get_all":
+        if (!args.cardId) throw new Error("cardId is required for get_all action");
+        result = await cardMemberships.getCardMemberships(args.cardId);
+        break;
+
+      case "get_users":
+        result = await users.getUsers();
+        break;
+
+      case "create": {
+        if (!args.cardId) throw new Error("cardId is required for create action");
+        const uid = await resolveUserId();
+        if (!uid) throw new Error("Could not resolve user ID from provided userId, email, or username");
+        result = await cardMemberships.createCardMembership(args.cardId, uid);
+        break;
+      }
+
+      case "delete": {
+        if (!args.cardId) throw new Error("cardId is required for delete action");
+        const uid = await resolveUserId();
+        if (!uid) throw new Error("Could not resolve user ID from provided userId, email, or username");
+        result = await cardMemberships.deleteCardMembership(args.cardId, uid);
+        break;
+      }
+
+      default:
+        throw new Error(`Unknown action: ${args.action}`);
+    }
+
+    return {
+      content: [{ type: "text", text: JSON.stringify(result) }],
+    };
+  }
+);
+
+// 12. Stopwatch
+server.tool(
+  "mcp_kanban_stopwatch",
+  "Manage card stopwatches for time tracking",
+  {
+    action: z.enum(["start", "stop", "get", "reset"]).describe("The action to perform"),
+    id: z.string().describe("The ID of the card"),
+  },
+  async (args) => {
+    let result;
+
+    switch (args.action) {
+      case "start":
+        result = await cards.startCardStopwatch(args.id);
+        break;
+
+      case "stop":
+        result = await cards.stopCardStopwatch(args.id);
+        break;
+
+      case "get":
+        result = await cards.getCardStopwatch(args.id);
+        break;
+
+      case "reset":
+        result = await cards.resetCardStopwatch(args.id);
         break;
 
       default:
