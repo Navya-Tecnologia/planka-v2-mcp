@@ -61,10 +61,10 @@ Ask Claude:
 
 ## 📖 Documentation
 
-- **[Installation Guide](wiki/Installation-Guide)**: Detailed setup for the MCP server.
-- **[API Reference](wiki/API-Reference)**: List of available consolidated manager tools.
-- **[Usage Guide](wiki/Usage-Guide)**: How to interact with the board via LLM.
-- **[Developer Guide](wiki/Developer-Guide)**: Architecture and how to extend the MCP.
+- **[Installation Guide](./wiki/Installation-Guide.md)**: Detailed setup for the MCP server.
+- **[API Reference](./wiki/API-Reference.md)**: List of available consolidated manager tools.
+- **[Usage Guide](./wiki/Usage-Guide.md)**: How to interact with the board via LLM.
+- **[Developer Guide](./wiki/Developer-Guide.md)**: Architecture and how to extend the MCP.
 
 ## 🏗️ Development
 

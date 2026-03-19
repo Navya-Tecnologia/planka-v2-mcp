@@ -54,4 +54,4 @@ The `mcp_kanban_stopwatch` tool tracks "Active Time" on a card.
 - **Context Retention**: The board state is the "source of truth", allowing the LLM to resume work without needing the full history of previous chats.
 - **Clear Hierarchy**: The Task List addition in v2.0 provides a better way for LLMs to organize sub-tasks without cluttering the card description.
 
-For tool-specific details, see the [API Reference](API-Reference).
+For tool-specific details, see the [API Reference](./API-Reference.md).

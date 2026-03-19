@@ -77,4 +77,4 @@ Claude: [Starts the stopwatch and confirms]
 - **Base URL**: Ensure `PLANKA_BASE_URL` does NOT end with `/api`.
 - **Authentication**: Use `PLANKA_AGENT_EMAIL` and `PLANKA_AGENT_PASSWORD`. The server handles token rotation automatically.
 
-For troubleshooting, see the [Troubleshooting](Troubleshooting) page.
+For troubleshooting, see the [Troubleshooting](./Troubleshooting.md) page.
