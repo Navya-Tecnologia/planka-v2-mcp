@@ -1,6 +1,6 @@
 {
   "name": "@navyatec/planka-v2-mcp",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "MCP server for Planka v2.x Kanban board",
   "license": "MIT",
   "author": "NAVYA TECNOLOGÍA 2024, S.L. (original by Brad Risse)",
@@ -29,7 +29,8 @@
     "start-node": "node dist/index.js",
     "inspector": "SERVER_PORT=3008 CLIENT_PORT=5174 npx -y @modelcontextprotocol/inspector node dist/index.js",
     "inspector:demo": "SERVER_PORT=3008 CLIENT_PORT=5174 npx -y @modelcontextprotocol/inspector node dist/index.js",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --testMatch='**/tests/**/*.test.ts'"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --testMatch='**/tests/**/*.test.ts'",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.6.1",
