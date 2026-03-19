@@ -46,7 +46,10 @@ server.tool(
     action: z
       .enum([
         "get_projects",
+        "create_project",
         "get_project",
+        "update_project",
+        "delete_project",
         "get_boards",
         "create_board",
         "get_board",
@@ -57,9 +60,12 @@ server.tool(
       .describe("The action to perform"),
     id: z.string().optional().describe("The ID of the project or board"),
     projectId: z.string().optional().describe("The ID of the project"),
-    name: z.string().optional().describe("The name of the board"),
+    name: z.string().optional().describe("The name of the project or board"),
+    description: z.string().optional().describe("The description of the project"),
     position: z.number().optional().describe("The position of the board"),
-    type: z.string().optional().describe("The type of the board"),
+    type: z.string().optional().describe("The type of the project (private/shared) or board"),
+    backgroundType: z.enum(["gradient", "image"]).optional().describe("Background type for update_project"),
+    backgroundGradient: z.string().optional().describe("Background gradient for update_project"),
     page: z
       .number()
       .optional()
@@ -87,10 +93,34 @@ server.tool(
       case "get_projects":
         result = await projects.getProjects(args.page || 1, args.perPage || 50);
         break;
+      
+      case "create_project":
+        if (!args.name) throw new Error("name is required for create_project action");
+        result = await projects.createProject({
+          name: args.name,
+          description: args.description,
+          type: (args.type as "private" | "shared") || "private",
+        });
+        break;
 
       case "get_project":
         if (!args.id) throw new Error("id is required for get_project action");
         result = await projects.getProject(args.id);
+        break;
+
+      case "update_project":
+        if (!args.id) throw new Error("id is required for update_project action");
+        result = await projects.updateProject(args.id, {
+          name: args.name,
+          description: args.description,
+          backgroundType: args.backgroundType as any,
+          backgroundGradient: args.backgroundGradient,
+        });
+        break;
+
+      case "delete_project":
+        if (!args.id) throw new Error("id is required for delete_project action");
+        result = await projects.deleteProject(args.id);
         break;
 
       case "get_boards":

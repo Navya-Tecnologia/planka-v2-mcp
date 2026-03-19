@@ -15,6 +15,9 @@ All functionality is grouped into **Manager Tools**. Each tool accepts an `actio
 |--------|------------|-------------|
 | `get_projects` | `page`, `perPage` | List all projects. |
 | `get_project` | `id` | Get project details. |
+| `create_project` | `name`, `description`, `type` | Create a new project. |
+| `update_project` | `id`, `name`, `description`, `backgroundType`, `backgroundGradient` | Update project settings. |
+| `delete_project` | `id` | Delete a project. |
 | `get_boards` | `projectId` | List boards in a project. |
 | `create_board` | `projectId`, `name`, `type` | Create a board. |
 | `get_board` | `id` | Get board details. |
