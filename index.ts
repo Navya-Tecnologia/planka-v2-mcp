@@ -911,44 +911,6 @@ server.tool(
   }
 );
 
-// 12. Stopwatch
-server.tool(
-  "mcp_kanban_stopwatch",
-  "Manage card stopwatches for time tracking",
-  {
-    action: z.enum(["start", "stop", "get", "reset"]).describe("The action to perform"),
-    id: z.string().describe("The ID of the card"),
-  },
-  async (args) => {
-    let result;
-
-    switch (args.action) {
-      case "start":
-        result = await cards.startCardStopwatch(args.id);
-        break;
-
-      case "stop":
-        result = await cards.stopCardStopwatch(args.id);
-        break;
-
-      case "get":
-        result = await cards.getCardStopwatch(args.id);
-        break;
-
-      case "reset":
-        result = await cards.resetCardStopwatch(args.id);
-        break;
-
-      default:
-        throw new Error(`Unknown action: ${args.action}`);
-    }
-
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-    };
-  }
-);
-
 async function runServer() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
