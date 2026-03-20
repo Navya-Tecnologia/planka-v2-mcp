@@ -119,13 +119,9 @@ export async function createList(options: CreateListOptions) {
 export async function getLists(boardId: string) {
   try {
     const response = await plankaRequest(`/api/boards/${boardId}`);
-    console.log(`DEBUG (getLists): response type = ${typeof response}`);
-    
     if (response && typeof response === "object" && (response as any).included && (response as any).included.lists) {
       return (response as any).included.lists;
     }
-    
-    console.warn(`DEBUG (getLists): No lists found in board ${boardId} included data.`);
     return [];
   } catch (error) {
     console.error(`Error getting lists for board ${boardId}:`, error);
