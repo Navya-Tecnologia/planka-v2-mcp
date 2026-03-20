@@ -138,7 +138,7 @@ export async function getBoardSummary(params: GetBoardSummaryParams) {
                 card.labelIds?.some((labelId: string) =>
                     boardLabels.find((label: any) =>
                         label.id === labelId &&
-                        label.name.toLowerCase() === "urgent"
+                        label.name?.toLowerCase() === "urgent"
                     )
                 )
             ).length;
@@ -148,7 +148,7 @@ export async function getBoardSummary(params: GetBoardSummaryParams) {
                 card.labelIds?.some((labelId: string) =>
                     boardLabels.find((label: any) =>
                         label.id === labelId &&
-                        label.name.toLowerCase() === "bug"
+                        label.name?.toLowerCase() === "bug"
                     )
                 )
             ).length;
