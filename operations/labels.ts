@@ -173,19 +173,15 @@ export async function createLabel(options: CreateLabelOptions) {
   }
 }
 
-/**
- * Retrieves all labels for a specific board
- *
- * @param {string} boardId - The ID of the board to get labels from
- * @returns {Promise<Array<object>>} Array of labels in the board
- */
 export async function getLabels(boardId: string) {
   try {
     const response = await plankaRequest(`/api/boards/${boardId}/labels`);
-    const parsedResponse = LabelsResponseSchema.parse(response);
-    return parsedResponse.items;
-  } catch (error) {
-    console.error(`Error getting labels for board ${boardId}:`, error);
+    if (response && typeof response === "object" && (response as any).items) {
+      return (response as any).items;
+    }
+    return [];
+  } catch (error: any) {
+    console.error(`Error getting labels for board ${boardId}: ${error?.message || "Unknown error"}`);
     return [];
   }
 }

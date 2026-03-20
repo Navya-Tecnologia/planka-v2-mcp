@@ -120,16 +120,16 @@ export async function getBoardSummary(params: GetBoardSummaryParams) {
 
         // Find specific lists by name
         const backlogList = listsWithCards.find((list: any) =>
-            list.name.toLowerCase() === "backlog"
+            list.name?.toLowerCase() === "backlog"
         );
         const inProgressList = listsWithCards.find((list: any) =>
-            list.name.toLowerCase() === "in progress"
+            list.name?.toLowerCase() === "in progress"
         );
         const testingList = listsWithCards.find((list: any) =>
-            list.name.toLowerCase() === "testing"
+            list.name?.toLowerCase() === "testing"
         );
         const doneList = listsWithCards.find((list: any) =>
-            list.name.toLowerCase() === "done"
+            list.name?.toLowerCase() === "done"
         );
 
         // Count cards with specific labels
