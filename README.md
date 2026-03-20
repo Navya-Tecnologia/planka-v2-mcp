@@ -12,8 +12,15 @@ A specialized Model Context Protocol (MCP) server that enables LLMs (like Claude
 - **⏱️ Persistent Time Tracking**: Start and stop stopwatches on cards; time is tracked directly in Planka.
 - **👥 Unified Membership Management**: Assign users to cards by **Email** or **Username** without needing their ID first.
 - **🚀 Project-First Defaults**: New cards are created as **type "project"** by default to ensure subtasks and checklists are immediately visible.
-- **🗂️ Consolidated Managers**: Grouped tools (Card Manager, Project Manager, etc.) to optimize LLM interaction.
-- **📊 Aggregate Summaries**: New `get_board_summary` and `get_project_summary` tools to analyze project health in a single request.
+- **🗂️ Consolidated Managers**: Grouped tools (Card Manager, Project Manager, etc.) to optimize LLM interaction and stay under tool limits.
+- **📊 Aggregate Summaries**: New tools for comprehensive data retrieval:
+  | Tool Name | Parameters | Description |
+  |---|---|---|
+  | `get_board` | `id` | Get board details. |
+  | `update_board` | `id`, `name`, `backgroundType`, etc. | Update board settings. |
+  | `delete_board` | `id` | Delete a board. |
+  | `get_board_summary` | `boardId`, `includeTaskDetails`, `includeComments` | Get a comprehensive summary of a board including stats. |
+  | `get_project_summary` | `id` | Get a summary of all boards in a project. |
 - **🏷️ Advanced Labeling**: Full support for v2.x color palettes and label assignment.
 
 ## 🚀 Quick Start (Connect to your Planka v2.x)
@@ -58,9 +65,9 @@ If you have the code locally, pointing to the built file:
 
 Ask Claude:
 - "Groom the Backlog board and break down the top card into tasks."
-- "Start tracking time for the UI Implementation card."
-- "Assign @rpalacios to the card 'Release MCP-AFFINE'."
-- "Create a new 'Database' Task List in the migration card."
+- "Start tracking time for the 'UI Implementation' card."
+- "Assign @jane.doe to the card 'Implement API Authentication'."
+- "Create a new 'Database' Task List in the 'System Migration' card."
 
 ## 📖 Documentation
 
@@ -87,3 +94,4 @@ npm run qc
 
 ---
 *This project focuses exclusively on the MCP interface. For Planka server setup, refer to the [official Planka documentation](https://docs.planka.app).*
+*Developed by [NAVYA TECNOLOGÍA 2024, S.L.](https://www.navyatec.es)*

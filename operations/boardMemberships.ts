@@ -128,21 +128,15 @@ export async function createBoardMembership(options: CreateBoardMembershipOption
  * @param {string} [projectId] - Optional project ID
  * @returns {Promise<Array<object>>} Array of board memberships
  */
-export async function getBoardMemberships(boardId: string, projectId?: string) {
+export async function getBoardMemberships(boardId: string, _projectId?: string) {
   try {
-    let targetProjectId = projectId;
-
-    if (!targetProjectId) {
-      const board = await boards.getBoard(boardId);
-      targetProjectId = board.projectId;
+    const response = await plankaRequest(`/api/boards/${boardId}`);
+    
+    if (response && typeof response === "object" && (response as any).included && (response as any).included.boardMemberships) {
+      return (response as any).included.boardMemberships;
     }
-
-    const response = await plankaRequest(
-      `/api/boards/${boardId}/board-memberships`
-    );
-
-    const parsedResponse = BoardMembershipsResponseSchema.parse(response);
-    return parsedResponse.items;
+    
+    return [];
   } catch (error) {
     console.error(`Error getting memberships for board ${boardId}:`, error);
     return [];

@@ -241,9 +241,13 @@ export async function createBoard(options: CreateBoardOptions) {
  */
 export async function getBoards(projectId: string) {
   try {
-    const response = await plankaRequest(`/api/projects/${projectId}/boards`);
-    const parsedResponse = BoardsResponseSchema.parse(response);
-    return parsedResponse.items;
+    const response = await plankaRequest(`/api/projects/${projectId}`);
+    
+    if (response && typeof response === "object" && (response as any).included && (response as any).included.boards) {
+      return (response as any).included.boards;
+    }
+    
+    return [];
   } catch (error) {
     console.error(`Error getting boards for project ${projectId}:`, error);
     return [];

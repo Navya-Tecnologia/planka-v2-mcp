@@ -228,8 +228,16 @@ export async function getTasks(cardId: string) {
 export async function getTask(id: string) {
   try {
     const response = await plankaRequest(`/api/tasks/${id}`);
-    const parsedResponse = TaskResponseSchema.parse(response);
-    return parsedResponse.item;
+    
+    // Check if the response is wrapped in 'item' or is the item itself
+    if (response && typeof response === "object") {
+        if ("item" in response && (response as any).item) {
+            return (response as any).item;
+        }
+        return response; // Assume it's the item directly
+    }
+    
+    throw new Error("Invalid task response format");
   } catch (error) {
     throw new Error(
       `Failed to get task: ${error instanceof Error ? error.message : String(error)}`

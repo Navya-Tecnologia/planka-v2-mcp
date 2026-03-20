@@ -353,38 +353,55 @@ export async function archiveCard(id: string) {
  */
 export async function startCardStopwatch(id: string) {
   try {
-    const response = await plankaRequest(`/api/cards/${id}/stopwatch`, {
-      method: "POST",
+    const card = await getCard(id);
+    const response = await plankaRequest(`/api/cards/${id}`, {
+      method: "PATCH",
+      body: {
+        stopwatch: {
+          startedAt: new Date().toISOString(),
+          total: card.stopwatch?.total || 0,
+        },
+      },
     });
 
     const parsedResponse = CardResponseSchema.parse(response);
     return parsedResponse.item;
   } catch (error) {
     throw new Error(
-      `Failed to start card stopwatch: ${error instanceof Error ? error.message : String(error)
-      }`,
+      `Failed to start card stopwatch: ${error instanceof Error ? error.message : String(error)}`
     );
   }
 }
 
-/**
- * Stops the stopwatch for a card
- *
- * @param {string} id - The ID of the card to stop the stopwatch for
- * @returns {Promise<object>} The updated card with stopwatch information
- */
 export async function stopCardStopwatch(id: string) {
   try {
-    const response = await plankaRequest(`/api/cards/${id}/stopwatch`, {
-      method: "DELETE",
+    // We first need the current total
+    const card = await getCard(id);
+    const existingTotal = card.stopwatch?.total || 0;
+    let newTotal = existingTotal;
+    
+    if (card.stopwatch?.startedAt) {
+        const startedAt = new Date(card.stopwatch.startedAt).getTime();
+        const now = new Date().getTime();
+        const elapsed = Math.floor((now - startedAt) / 1000);
+        newTotal += elapsed;
+    }
+
+    const response = await plankaRequest(`/api/cards/${id}`, {
+      method: "PATCH",
+      body: {
+        stopwatch: {
+          startedAt: null,
+          total: newTotal,
+        },
+      },
     });
 
     const parsedResponse = CardResponseSchema.parse(response);
     return parsedResponse.item;
   } catch (error) {
     throw new Error(
-      `Failed to stop card stopwatch: ${error instanceof Error ? error.message : String(error)
-      }`,
+      `Failed to stop card stopwatch: ${error instanceof Error ? error.message : String(error)}`
     );
   }
 }
@@ -428,31 +445,28 @@ export async function getCardStopwatch(id: string) {
     };
   } catch (error) {
     throw new Error(
-      `Failed to get card stopwatch: ${error instanceof Error ? error.message : String(error)
-      }`,
+      `Failed to get card stopwatch: ${error instanceof Error ? error.message : String(error)}`
     );
   }
 }
 
-/**
- * Resets the stopwatch for a card
- *
- * @param {string} id - The ID of the card to reset the stopwatch for
- * @returns {Promise<object>} The updated card with reset stopwatch
- */
 export async function resetCardStopwatch(id: string) {
   try {
-    const response = await plankaRequest(`/api/cards/${id}/stopwatch`, {
+    const response = await plankaRequest(`/api/cards/${id}`, {
       method: "PATCH",
-      body: { total: 0 },
+      body: {
+        stopwatch: {
+          startedAt: null,
+          total: 0,
+        },
+      },
     });
 
     const parsedResponse = CardResponseSchema.parse(response);
     return parsedResponse.item;
   } catch (error) {
     throw new Error(
-      `Failed to reset card stopwatch: ${error instanceof Error ? error.message : String(error)
-      }`,
+      `Failed to reset card stopwatch: ${error instanceof Error ? error.message : String(error)}`
     );
   }
 }

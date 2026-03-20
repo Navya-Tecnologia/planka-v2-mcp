@@ -35,10 +35,10 @@ export async function getAdminUserId(): Promise<string | null> {
             }
         }
 
-        // If that fails, try to get the admin ID by username
-        const adminUsername = process.env.PLANKA_ADMIN_USERNAME;
-        if (adminUsername) {
-            const id = await getUserIdByUsername(adminUsername);
+        // Fallback to agent email
+        const agentEmail = process.env.PLANKA_AGENT_EMAIL;
+        if (agentEmail) {
+            const id = await getUserIdByEmail(agentEmail);
             if (id) {
                 adminUserId = id;
                 return adminUserId;
@@ -46,7 +46,7 @@ export async function getAdminUserId(): Promise<string | null> {
         }
 
         console.error(
-            "Could not determine admin user ID. Please set PLANKA_ADMIN_ID, PLANKA_ADMIN_EMAIL, or PLANKA_ADMIN_USERNAME.",
+            "Could not determine admin user ID. Please set PLANKA_ADMIN_ID, PLANKA_ADMIN_EMAIL, PLANKA_ADMIN_USERNAME, or PLANKA_AGENT_EMAIL.",
         );
         return null;
     } catch (error) {
