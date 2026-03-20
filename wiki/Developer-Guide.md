@@ -29,7 +29,7 @@ kanban-mcp/
 │   ├── labels.ts           # Label operations
 │   └── boardMemberships.ts  # Membership operations
 ├── index.ts                # Main entry point & MCP tool definitions
-├── tools/                  # Swagger specs and supplementary tools
+├── tools/                  # Aggregated tools (Board/Project summaries, etc.)
 ├── tests/                  # Integration and unit tests
 ├── .agent/                 # Agent-specific rules and skills
 ├── .env                    # Environment variables

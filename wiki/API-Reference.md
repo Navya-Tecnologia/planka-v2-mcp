@@ -23,6 +23,8 @@ All functionality is grouped into **Manager Tools**. Each tool accepts an `actio
 | `get_board` | `id` | Get board details. |
 | `update_board` | `id`, `name`, `backgroundType`, etc. | Update board settings. |
 | `delete_board` | `id` | Delete a board. |
+| `get_board_summary` | `boardId`, `includeTaskDetails`, `includeComments` | Get comprehensive board summary including stats. |
+| `get_project_summary` | `id` | Get summary for all boards in a project. |
 
 ---
 

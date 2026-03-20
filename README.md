@@ -12,7 +12,8 @@ A specialized Model Context Protocol (MCP) server that enables LLMs (like Claude
 - **⏱️ Persistent Time Tracking**: Start and stop stopwatches on cards; time is tracked directly in Planka.
 - **👥 Unified Membership Management**: Assign users to cards by **Email** or **Username** without needing their ID first.
 - **🚀 Project-First Defaults**: New cards are created as **type "project"** by default to ensure subtasks and checklists are immediately visible.
-- **🗂️ Consolidated Managers**: Grouped tools (Card Manager, Project Manager, etc.) to optimize LLM interaction and stay under tool limits.
+- **🗂️ Consolidated Managers**: Grouped tools (Card Manager, Project Manager, etc.) to optimize LLM interaction.
+- **📊 Aggregate Summaries**: New `get_board_summary` and `get_project_summary` tools to analyze project health in a single request.
 - **🏷️ Advanced Labeling**: Full support for v2.x color palettes and label assignment.
 
 ## 🚀 Quick Start (Connect to your Planka v2.x)

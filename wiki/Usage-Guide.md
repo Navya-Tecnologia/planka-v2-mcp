@@ -8,7 +8,7 @@ The Kanban MCP provides several consolidated managers that Claude can use to int
 
 ### 📂 Project & Board Management
 **Tool**: `mcp_kanban_project_board_manager`
-- **Actions**: `get_projects`, `get_project`, `get_boards`, `create_board`, `get_board`, `update_board`, `delete_board`.
+- **Actions**: `get_projects`, `get_project`, `get_boards`, `create_board`, `get_board`, `update_board`, `delete_board`, `get_board_summary`, `get_project_summary`.
 - **New in v2.x**: Support for `private` or `shared` project types and advanced background styles.
 
 ### 📋 List Management
