@@ -303,6 +303,46 @@ export async function deleteCard(id: string) {
   }
 }
 
+/**
+ * Archives a card by moving it to the board's archive list
+ *
+ * @param {string} id - The ID of the card to archive
+ * @returns {Promise<object>} The archived card or success indicator
+ */
+export async function archiveCard(id: string) {
+  try {
+    // First get the card to know its boardId
+    const cardResponse = await plankaRequest(`/api/cards/${id}`);
+    const card = (cardResponse as any).item;
+    const boardId = card.boardId;
+
+    // Get board details to find the archive list
+    const boardResponse = await plankaRequest(`/api/boards/${boardId}`);
+    const lists: any[] = (boardResponse as any).included?.lists || [];
+    const archiveList = lists.find((l: any) => l.type === "archive");
+
+    if (!archiveList) {
+      throw new Error("No archive list found for this board");
+    }
+
+    // Move card to archive list
+    const response = await plankaRequest(`/api/cards/${id}`, {
+      method: "PATCH",
+      body: {
+        listId: archiveList.id,
+        position: 65535,
+      },
+    });
+
+    const parsedResponse = CardResponseSchema.parse((response as any).item ? response : { item: response });
+    return parsedResponse.item;
+  } catch (error) {
+    throw new Error(
+      `Failed to archive card: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
+
 // Stopwatch functions
 
 /**

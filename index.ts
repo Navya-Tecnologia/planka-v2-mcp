@@ -341,16 +341,20 @@ server.tool(
 
       case "update":
         if (!args.id) throw new Error("id is required for update action");
-        
-        result = await cards.updateCard(args.id, {
-          name: args.name,
-          description: args.description,
-          type: args.type as any,
-          position: args.position,
-          dueDate: args.dueDate,
-          isCompleted: args.isCompleted,
-          isClosed: args.isClosed,
-        });
+
+        // Planka v2 doesn't support isClosed via PATCH - use dedicated archive function
+        if (args.isClosed === true) {
+          result = await cards.archiveCard(args.id);
+        } else {
+          result = await cards.updateCard(args.id, {
+            name: args.name,
+            description: args.description,
+            type: args.type as any,
+            position: args.position,
+            dueDate: args.dueDate,
+            isCompleted: args.isCompleted,
+          });
+        }
         break;
 
       case "move":
