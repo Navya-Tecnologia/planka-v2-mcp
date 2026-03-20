@@ -23,6 +23,7 @@ import {
   createCardWithTasks,
   getBoardSummary,
   getCardDetails,
+  getProjectSummary,
 } from "./tools/index.js";
 
 import { VERSION } from "./common/version.js";
@@ -59,6 +60,7 @@ server.tool(
         "update_board",
         "delete_board",
         "get_board_summary",
+        "get_project_summary",
       ])
       .describe("The action to perform"),
     id: z.string().optional().describe("The ID of the project or board"),
@@ -170,8 +172,16 @@ server.tool(
           throw new Error("boardId is required for get_board_summary action");
         result = await getBoardSummary({
           boardId: args.boardId,
-          includeTaskDetails: args.includeTaskDetails,
-          includeComments: args.includeComments,
+          includeTaskDetails: args.includeTaskDetails || false,
+          includeComments: args.includeComments || false,
+        });
+        break;
+
+      case "get_project_summary":
+        if (!args.id)
+          throw new Error("id is required for get_project_summary action");
+        result = await getProjectSummary({
+          projectId: args.id,
         });
         break;
 

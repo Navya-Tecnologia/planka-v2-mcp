@@ -11,4 +11,5 @@
 export * from "./board-summary.js";
 export * from "./card-details.js";
 export * from "./create-card-with-tasks.js";
+export * from "./project-summary.js";
 export * from "./workflow-actions.js";
