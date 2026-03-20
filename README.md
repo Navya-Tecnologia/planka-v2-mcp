@@ -90,6 +90,9 @@ npm run dev
 
 # Run quality checks
 npm run qc
+
+### 🚀 Automated Releases
+This project is configured for automated releases via **GitHub Actions**. Pushing a tag in the format `v*` (e.g., `v1.3.4`) will automatically build, test, and publish the package to **NPM** and create a **GitHub Release**.
 ```
 
 ---

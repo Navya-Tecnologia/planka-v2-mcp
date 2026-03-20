@@ -97,3 +97,37 @@ npx jest tests/integration.test.ts
 1. **JSDoc**: Document all public functions in `operations/` and `common/`.
 2. **Consolidation**: Always prefer adding actions to existing manager tools in `index.ts`.
 3. **Backward Compatibility**: Ensure that old `cardId`-based calls for tasks still work by redirecting to the new Task List hierarchy.
+
+---
+
+## 🚀 Automated Releases (CI/CD)
+
+The project uses **GitHub Actions** to automate the publishing of new versions to **NPM** and **GitHub Releases**.
+
+### 🛠️ Configuration
+To enable automated releases, the following secret must be configured in GitHub (`Settings > Secrets and variables > Actions`):
+- `NPM_TOKEN`: A classic or granular automation token from your NPM account.
+
+### 📦 How to Release a New Version
+Releases are triggered automatically when a new **Git Tag** starting with `v` (e.g., `v1.3.4`) is pushed to the repository.
+
+1. **Update the version**:
+   Update `package.json` and `common/version.ts` to the new version number.
+2. **Commit and Push**:
+   ```bash
+   git add .
+   git commit -m "chore: bump version to 1.x.x"
+   git push origin main
+   ```
+3. **Create and Push the Tag**:
+   ```bash
+   git tag v1.x.x
+   git push origin v1.x.x
+   ```
+
+### 🎈 What the Workflow Does
+Once the tag is pushed, the `publish.yml` workflow will:
+1. **Build & Test**: Compile the source and run unit tests.
+2. **NPM Pack**: Create the production tarball (`.tgz`).
+3. **GitHub Release**: Create a new release in the repository and attach the tarball.
+4. **NPM Publish**: Upload the package to the official NPM registry.
