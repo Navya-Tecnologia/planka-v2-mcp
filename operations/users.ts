@@ -18,9 +18,9 @@ export const GetUserSchema = z.object({
 // Response schemas
 const UserSchema = z.object({
   id: z.string(),
-  email: z.string(),
-  name: z.string(),
-  username: z.string().nullable(),
+  email: z.string().nullable().optional(),
+  name: z.string().nullable().optional(),
+  username: z.string().nullable().optional(),
   avatarUrl: z.string().nullable().optional(),
 });
 

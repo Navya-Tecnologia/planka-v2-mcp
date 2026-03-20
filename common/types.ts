@@ -3,12 +3,12 @@ import { z } from "zod";
 // Planka schemas
 export const PlankaUserSchema = z.object({
   id: z.string(),
-  email: z.string(),
-  name: z.string().nullable(),
-  username: z.string().nullable(),
-  avatarUrl: z.string().nullable(),
-  createdAt: z.string().nullable(),
-  updatedAt: z.string().nullable(),
+  email: z.string().nullable().optional(),
+  name: z.string().nullable().optional(),
+  username: z.string().nullable().optional(),
+  avatarUrl: z.string().nullable().optional(),
+  createdAt: z.string().nullable().optional(),
+  updatedAt: z.string().nullable().optional(),
 });
 
 export const PlankaProjectSchema = z.object({
