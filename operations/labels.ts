@@ -175,9 +175,16 @@ export async function createLabel(options: CreateLabelOptions) {
 
 export async function getLabels(boardId: string) {
   try {
-    const response = await plankaRequest(`/api/boards/${boardId}/labels`);
-    if (response && typeof response === "object" && (response as any).items) {
-      return (response as any).items;
+    // Planka does NOT expose GET /api/boards/{boardId}/labels.
+    // Labels are embedded in the board response under 'included.labels'.
+    const response = await plankaRequest(`/api/boards/${boardId}`);
+    if (
+      response &&
+      typeof response === "object" &&
+      (response as any).included &&
+      (response as any).included.labels
+    ) {
+      return (response as any).included.labels;
     }
     return [];
   } catch (error: any) {

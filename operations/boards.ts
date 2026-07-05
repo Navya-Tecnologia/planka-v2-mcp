@@ -255,6 +255,37 @@ export async function getBoards(projectId: string) {
 }
 
 /**
+ * Retrieves ALL boards the authenticated user can access across all projects.
+ * Unlike getBoards (which only returns boards in one project), this discovers
+ * every board the user is a member of.
+ *
+ * @returns {Promise<Array<object>>} Array of all accessible boards with their projectId
+ */
+export async function getUserBoards() {
+  try {
+    const response = await plankaRequest("/api/projects");
+    
+    if (response && typeof response === "object" && (response as any).included && (response as any).included.boards) {
+      const boards = (response as any).included.boards;
+      // Projects are in response.items, not included.projects
+      const projects = (response as any).items || [];
+      return boards.map((board: any) => {
+        const project = projects.find((p: any) => p.id === board.projectId);
+        return {
+          ...board,
+          projectName: project ? project.name : null,
+        };
+      });
+    }
+    
+    return [];
+  } catch (error) {
+    console.error("Error getting user boards:", error);
+    return [];
+  }
+}
+
+/**
  * Retrieves a specific board by ID
  *
  * @param {string} id - The ID of the board to retrieve

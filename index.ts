@@ -55,6 +55,7 @@ server.tool(
         "update_project",
         "delete_project",
         "get_boards",
+        "get_my_boards",
         "create_board",
         "get_board",
         "update_board",
@@ -132,6 +133,10 @@ server.tool(
         if (!args.projectId)
           throw new Error("projectId is required for get_boards action");
         result = await boards.getBoards(args.projectId);
+        break;
+
+      case "get_my_boards":
+        result = await boards.getUserBoards();
         break;
 
       case "create_board":
