@@ -43,7 +43,13 @@ RUN mkdir -p /app/attachments
 # Use --force to skip prompts
 RUN pnpm install --prod --force --ignore-scripts
 
+# Set ownership to node user
+RUN chown -R node:node /app
+
 # Define volume for attachments
 VOLUME ["/app/attachments"]
+
+# Run as non-root user
+USER node
 
 ENTRYPOINT ["node", "dist/index.js"] 

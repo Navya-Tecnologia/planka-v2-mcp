@@ -1,9 +1,31 @@
+import * as https from "node:https";
+import fetch, { Response } from "node-fetch";
 import { getUserAgent } from "universal-user-agent";
 import { createPlankaError } from "./errors.js";
 import { VERSION } from "./version.js";
 
 // Global variables to store tokens
 let agentToken: string | null = null;
+
+// Reusable scoped HTTPS agent for self-signed certificates when explicitly requested
+const insecureHttpsAgent = new https.Agent({
+  rejectUnauthorized: false,
+});
+
+let warnedInsecureTls = false;
+
+function getHttpsAgent(url: string): https.Agent | undefined {
+  if (process.env.PLANKA_IGNORE_SSL === "true" && url.startsWith("https:")) {
+    if (!warnedInsecureTls) {
+      console.error(
+        "[SECURITY WARNING] PLANKA_IGNORE_SSL is enabled. TLS verification is disabled only for Planka HTTPS requests.",
+      );
+      warnedInsecureTls = true;
+    }
+    return insecureHttpsAgent;
+  }
+  return undefined;
+}
 
 type RequestOptions = {
   method?: string;
@@ -55,6 +77,7 @@ async function authenticateAgent(): Promise<string> {
   const url = new URL("/api/access-tokens", normalizedBaseUrl).toString();
 
   try {
+    const agent = getHttpsAgent(url);
     const response = await fetch(url, {
       method: "POST",
       headers: {
@@ -66,7 +89,7 @@ async function authenticateAgent(): Promise<string> {
         emailOrUsername: email,
         password: password,
       }),
-      credentials: "include",
+      agent,
     });
 
     const responseBody = await parseResponseBody(response);
@@ -110,7 +133,12 @@ export async function plankaRequest(
   const normalizedPath = path.startsWith("/api/") ? path : `/api/${path}`;
 
   const urlObj = new URL(normalizedPath, normalizedBaseUrl);
-  
+
+  // Path Traversal Protection: Ensure URL path does not traverse outside /api
+  if (!urlObj.pathname.startsWith("/api/") && urlObj.pathname !== "/api") {
+    throw new Error(`Security violation: Path traversal detected in ${path}`);
+  }
+
   // SSRF Protection: Ensure we don't accidentally redirect to a different host via normalizedPath
   const baseHost = new URL(normalizedBaseUrl).host;
   if (urlObj.host !== baseHost) {
@@ -144,23 +172,17 @@ export async function plankaRequest(
     }
   }
 
-  // Handle SSL certificate verification bypass for internal networks
-  if (process.env.PLANKA_IGNORE_SSL === "true") {
-    // Note: Setting this globally affects the whole process, but it's a common 
-    // workaround for internal servers with self-signed certs.
-    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-  }
-
   try {
+    const agent = getHttpsAgent(url);
     const response = await fetch(url, {
       method: options.method || "GET",
       headers,
       body: options.body instanceof FormData
-        ? options.body
+        ? (options.body as any)
         : options.body
         ? JSON.stringify(options.body)
         : undefined,
-      credentials: "include", // Include cookies for Planka authentication
+      agent,
     });
 
     const responseBody = await parseResponseBody(response);
@@ -264,3 +286,21 @@ export async function getUserIdByUsername(
     return null;
   }
 }
+
+/**
+ * Sanitizes and encodes an ID parameter to prevent path traversal
+ *
+ * @param {string} id - The ID to sanitize
+ * @returns {string} The sanitized and URL-encoded ID
+ */
+export function sanitizeId(id: string): string {
+  if (!id || typeof id !== "string") {
+    throw new Error("Invalid ID parameter provided");
+  }
+  const trimmed = id.trim();
+  if (trimmed.includes("/") || trimmed.includes("\\") || trimmed.includes("..")) {
+    throw new Error(`Security violation: Invalid characters detected in ID parameter: ${id}`);
+  }
+  return encodeURIComponent(trimmed);
+}
+

@@ -1,0 +1,28 @@
+# Git repository
+.git
+.gitignore
+
+# Environment variables and secrets
+.env*
+!.env.example
+
+# Dependencies and build outputs
+node_modules
+dist
+
+# MCP and Agent configuration
+.agent
+.cursor
+.cursorrules
+
+# Package archives and logs
+*.tgz
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Test and coverage artifacts
+coverage
+.jest

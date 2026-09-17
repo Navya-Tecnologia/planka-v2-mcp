@@ -11,6 +11,6 @@
     "outDir": "./dist",
     "rootDir": "."
   },
-  "include": ["./**/*.ts"],
-  "exclude": ["node_modules", "tests"]
+  "include": ["index.ts", "common/**/*.ts", "operations/**/*.ts", "tools/**/*.ts"],
+  "exclude": ["node_modules", "tests", "dist", ".agent"]
 }
