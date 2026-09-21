@@ -128,7 +128,7 @@ npm run qc
 ```
 
 ### 🚀 Automated Releases
-This project is configured for automated releases via **GitHub Actions**. Pushing a tag in the format `v*` (e.g., `v1.3.5`) will automatically run tests, build, publish the package to **NPM**, and create a **GitHub Release**.
+This project is configured for automated releases via **GitHub Actions**. Pushing a tag in the format `v*` (e.g., `v1.4.0`) will automatically run tests, build, publish the package to **NPM**, publish the container image to **GHCR**, and create a **GitHub Release**.
 
 ---
 *This project focuses exclusively on the MCP interface. For Planka server setup, refer to the [official Planka documentation](https://docs.planka.app).*

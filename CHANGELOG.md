@@ -7,15 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.3.5] - 2026-09-21
+## [1.4.0] - 2026-09-21
 
 ### Added
 - **HTTP SSE Network Transport**: Implemented native Node.js HTTP Server-Sent Events transport (`SSEServerTransport`) in `transport/httpServer.ts`, exposing `/sse`, `/messages`, and `/health` endpoints with full CORS support.
 - **Dual Transport Mode**: Supported switching between default `stdio` and `sse` via CLI flags (`--transport sse`, `--port`, `--host`) or environment variables (`MCP_TRANSPORT=sse`, `PORT=3000`).
 - **Optional Bearer Token Authentication**: Added `MCP_API_KEY` verification via `Authorization: Bearer <key>` header and `?token=`/`?apiKey=` query parameters for secure remote SSE deployments.
 - **Docker Modernization & GHCR Publishing**: Modernized `Dockerfile` with multi-stage build, non-root user, and SSE defaults (`EXPOSE 3000`). Automated container image publication to GitHub Container Registry (`ghcr.io/navya-tecnologia/planka-v2-mcp`) in `publish.yml`.
+- **SSE Unit Test Suite**: Added comprehensive unit tests (`tests/unit/sse-server.test.ts`) covering CLI parsing, auth validation, and SSE endpoints (raising total test suite to 30 tests).
+
+---
+
+## [1.3.5] - 2026-09-21
+
+### Added
 - **Workflow Action Tool**: Registered `workflow_action` in `mcp_kanban_card_manager`, enabling LLMs to transition cards through standard Kanban states (`start_working`, `mark_completed`, `move_to_testing`, `move_to_done`) with optional comments and task completions.
-- **Unit Test Suite**: Created isolated unit tests with Jest (`tests/unit/utils.test.ts`, `tests/unit/card-details.test.ts`, and `tests/unit/sse-server.test.ts`) covering ID sanitization, URL building, error mappings, card detail resolution, CLI parsing, auth validation, and SSE endpoints (30 tests total).
+- **Unit Test Suite**: Created isolated unit tests with Jest (`tests/unit/utils.test.ts` and `tests/unit/card-details.test.ts`) covering ID sanitization, URL building, error mappings, and card detail resolution.
 - **CI Test Verification**: Added automated test step (`npm test`) in `.github/workflows/publish.yml` to prevent broken releases from being published to NPM or GitHub Releases.
 
 ### Changed
