@@ -7,7 +7,7 @@
  */
 
 import { z } from "zod";
-import { plankaRequest } from "../common/utils.js";
+import { plankaRequest, sanitizeId } from "../common/utils.js";
 import { PlankaCardSchema, PlankaStopwatchSchema } from "../common/types.js";
 
 // Schema definitions
@@ -135,7 +135,7 @@ const CardResponseSchema = z.object({
 export async function createCard(options: CreateCardOptions) {
   try {
     const response = await plankaRequest(
-      `/api/lists/${options.listId}/cards`,
+      `/api/lists/${sanitizeId(options.listId)}/cards`,
       {
         method: "POST",
         body: {
@@ -164,7 +164,7 @@ export async function createCard(options: CreateCardOptions) {
  */
 export async function getCards(listId: string) {
   try {
-    const response = await plankaRequest(`/api/lists/${listId}/cards`);
+    const response = await plankaRequest(`/api/lists/${sanitizeId(listId)}/cards`);
     const parsedResponse = CardsResponseSchema.parse(response);
     return parsedResponse.items;
   } catch (error) {
@@ -181,7 +181,7 @@ export async function getCards(listId: string) {
  */
 export async function getCard(id: string) {
   try {
-    const response = await plankaRequest(`/api/cards/${id}`);
+    const response = await plankaRequest(`/api/cards/${sanitizeId(id)}`);
     const parsedResponse = CardResponseSchema.parse(response);
     return parsedResponse.item;
   } catch (error) {
@@ -203,7 +203,7 @@ export async function updateCard(
   options: Partial<Omit<UpdateCardOptions, "id">>,
 ) {
   try {
-    const response = await plankaRequest(`/api/cards/${id}`, {
+    const response = await plankaRequest(`/api/cards/${sanitizeId(id)}`, {
       method: "PATCH",
       body: options,
     });
@@ -241,7 +241,7 @@ export async function moveCard(
       body.boardId = boardId;
     }
 
-    const response = await plankaRequest(`/api/cards/${cardId}`, {
+    const response = await plankaRequest(`/api/cards/${sanitizeId(cardId)}`, {
       method: "PATCH",
       body,
     });
@@ -292,7 +292,7 @@ export async function duplicateCard(id: string, position?: number) {
  */
 export async function deleteCard(id: string) {
   try {
-    await plankaRequest(`/api/cards/${id}`, {
+    await plankaRequest(`/api/cards/${sanitizeId(id)}`, {
       method: "DELETE",
     });
     return { success: true };
@@ -312,12 +312,12 @@ export async function deleteCard(id: string) {
 export async function archiveCard(id: string) {
   try {
     // First get the card to know its boardId
-    const cardResponse = await plankaRequest(`/api/cards/${id}`);
+    const cardResponse = await plankaRequest(`/api/cards/${sanitizeId(id)}`);
     const card = (cardResponse as any).item;
     const boardId = card.boardId;
 
     // Get board details to find the archive list
-    const boardResponse = await plankaRequest(`/api/boards/${boardId}`);
+    const boardResponse = await plankaRequest(`/api/boards/${sanitizeId(boardId)}`);
     const lists: any[] = (boardResponse as any).included?.lists || [];
     const archiveList = lists.find((l: any) => l.type === "archive");
 
@@ -326,7 +326,7 @@ export async function archiveCard(id: string) {
     }
 
     // Move card to archive list
-    const response = await plankaRequest(`/api/cards/${id}`, {
+    const response = await plankaRequest(`/api/cards/${sanitizeId(id)}`, {
       method: "PATCH",
       body: {
         listId: archiveList.id,
@@ -354,7 +354,7 @@ export async function archiveCard(id: string) {
 export async function startCardStopwatch(id: string) {
   try {
     const card = await getCard(id);
-    const response = await plankaRequest(`/api/cards/${id}`, {
+    const response = await plankaRequest(`/api/cards/${sanitizeId(id)}`, {
       method: "PATCH",
       body: {
         stopwatch: {
@@ -387,7 +387,7 @@ export async function stopCardStopwatch(id: string) {
         newTotal += elapsed;
     }
 
-    const response = await plankaRequest(`/api/cards/${id}`, {
+    const response = await plankaRequest(`/api/cards/${sanitizeId(id)}`, {
       method: "PATCH",
       body: {
         stopwatch: {
@@ -452,7 +452,7 @@ export async function getCardStopwatch(id: string) {
 
 export async function resetCardStopwatch(id: string) {
   try {
-    const response = await plankaRequest(`/api/cards/${id}`, {
+    const response = await plankaRequest(`/api/cards/${sanitizeId(id)}`, {
       method: "PATCH",
       body: {
         stopwatch: {

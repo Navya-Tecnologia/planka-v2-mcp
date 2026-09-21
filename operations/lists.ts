@@ -6,7 +6,7 @@
  */
 
 import { z } from "zod";
-import { plankaRequest } from "../common/utils.js";
+import { plankaRequest, sanitizeId } from "../common/utils.js";
 import { PlankaListSchema } from "../common/types.js";
 
 // Schema definitions
@@ -90,7 +90,7 @@ const ListResponseSchema = z.object({
 export async function createList(options: CreateListOptions) {
   try {
     const response = await plankaRequest(
-      `/api/boards/${options.boardId}/lists`,
+      `/api/boards/${sanitizeId(options.boardId)}/lists`,
       {
         method: "POST",
         body: {
@@ -118,7 +118,7 @@ export async function createList(options: CreateListOptions) {
  */
 export async function getLists(boardId: string) {
   try {
-    const response = await plankaRequest(`/api/boards/${boardId}`);
+    const response = await plankaRequest(`/api/boards/${sanitizeId(boardId)}`);
     if (response && typeof response === "object" && (response as any).included && (response as any).included.lists) {
       return (response as any).included.lists;
     }
@@ -137,7 +137,7 @@ export async function getLists(boardId: string) {
  */
 export async function getList(id: string) {
   try {
-    const response = await plankaRequest(`/api/lists/${id}`);
+    const response = await plankaRequest(`/api/lists/${sanitizeId(id)}`);
     const parsedResponse = ListResponseSchema.parse(response);
     return parsedResponse.item;
   } catch (error) {
@@ -157,12 +157,18 @@ export async function updateList(
   id: string,
   options: Partial<Omit<UpdateListOptions, "id">>,
 ) {
-  const response = await plankaRequest(`/api/lists/${id}`, {
-    method: "PATCH",
-    body: options,
-  });
-  const parsedResponse = ListResponseSchema.parse(response);
-  return parsedResponse.item;
+  try {
+    const response = await plankaRequest(`/api/lists/${sanitizeId(id)}`, {
+      method: "PATCH",
+      body: options,
+    });
+    const parsedResponse = ListResponseSchema.parse(response);
+    return parsedResponse.item;
+  } catch (error) {
+    throw new Error(
+      `Failed to update list: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
 }
 
 /**
@@ -172,9 +178,15 @@ export async function updateList(
  * @returns {Promise<{success: boolean}>} Success indicator
  */
 export async function deleteList(id: string) {
-  await plankaRequest(`/api/lists/${id}`, {
-    method: "DELETE",
-  });
-  return { success: true };
+  try {
+    await plankaRequest(`/api/lists/${sanitizeId(id)}`, {
+      method: "DELETE",
+    });
+    return { success: true };
+  } catch (error) {
+    throw new Error(
+      `Failed to delete list: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
 }
 

@@ -109,7 +109,7 @@ To enable automated releases, the following secret must be configured in GitHub 
 - `NPM_TOKEN`: A classic or granular automation token from your NPM account.
 
 ### 📦 How to Release a New Version
-Releases are triggered automatically when a new **Git Tag** starting with `v` (e.g., `v1.3.4`) is pushed to the repository.
+Releases are triggered automatically when a new **Git Tag** starting with `v` (e.g., `v1.3.5`) is pushed to the repository.
 
 1. **Update the version**:
    Update `package.json` and `common/version.ts` to the new version number.

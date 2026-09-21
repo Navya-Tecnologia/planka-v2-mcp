@@ -32,6 +32,7 @@ type RequestOptions = {
   body?: unknown;
   headers?: Record<string, string>;
   skipAuth?: boolean;
+  _isRetry?: boolean;
 };
 
 async function parseResponseBody(response: Response): Promise<unknown> {
@@ -188,6 +189,11 @@ export async function plankaRequest(
     const responseBody = await parseResponseBody(response);
 
     if (!response.ok) {
+      // Auto-retry once on 401 with refreshed token
+      if (response.status === 401 && !options.skipAuth && !options._isRetry) {
+        agentToken = null;
+        return plankaRequest(path, { ...options, _isRetry: true });
+      }
       throw createPlankaError(response.status, responseBody);
     }
 
@@ -239,8 +245,8 @@ export function validateCardName(name: string): string {
  */
 export async function getUserIdByEmail(email: string): Promise<string | null> {
   try {
-    // Get all users
-    const response = await plankaRequest("/api/users");
+    // Get users with pagination
+    const response = await plankaRequest("/api/users?page=1&perPage=100");
     const { items } = response as {
       items: Array<{ id: string; email: string }>;
     };
@@ -268,8 +274,8 @@ export async function getUserIdByUsername(
   username: string,
 ): Promise<string | null> {
   try {
-    // Get all users
-    const response = await plankaRequest("/api/users");
+    // Get users with pagination
+    const response = await plankaRequest("/api/users?page=1&perPage=100");
     const { items } = response as {
       items: Array<{ id: string; username: string }>;
     };

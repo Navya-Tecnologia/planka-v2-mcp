@@ -7,7 +7,7 @@
  */
 
 import { z } from "zod";
-import { plankaRequest } from "../common/utils.js";
+import { plankaRequest, sanitizeId } from "../common/utils.js";
 import { PlankaBoardMembershipSchema } from "../common/types.js";
 import * as boards from "./boards.js";
 
@@ -101,7 +101,7 @@ export async function createBoardMembership(options: CreateBoardMembershipOption
     }
 
     const response = await plankaRequest(
-      `/api/boards/${options.boardId}/board-memberships`,
+      `/api/boards/${sanitizeId(options.boardId)}/board-memberships`,
       {
         method: "POST",
         body: {
@@ -130,7 +130,7 @@ export async function createBoardMembership(options: CreateBoardMembershipOption
  */
 export async function getBoardMemberships(boardId: string, _projectId?: string) {
   try {
-    const response = await plankaRequest(`/api/boards/${boardId}`);
+    const response = await plankaRequest(`/api/boards/${sanitizeId(boardId)}`);
     
     if (response && typeof response === "object" && (response as any).included && (response as any).included.boardMemberships) {
       return (response as any).included.boardMemberships;
@@ -151,7 +151,7 @@ export async function getBoardMemberships(boardId: string, _projectId?: string) 
  */
 export async function getBoardMembership(id: string) {
   try {
-    const response = await plankaRequest(`/api/board-memberships/${id}`);
+    const response = await plankaRequest(`/api/board-memberships/${sanitizeId(id)}`);
     const parsedResponse = BoardMembershipResponseSchema.parse(response);
     return parsedResponse.item;
   } catch (error) {
@@ -171,7 +171,7 @@ export async function getBoardMembership(id: string) {
 export async function updateBoardMembership(id: string, options: Partial<UpdateBoardMembershipOptions>) {
   try {
     const { id: _, ...updateData } = options;
-    const response = await plankaRequest(`/api/board-memberships/${id}`, {
+    const response = await plankaRequest(`/api/board-memberships/${sanitizeId(id)}`, {
       method: "PATCH",
       body: updateData,
     });
@@ -192,7 +192,7 @@ export async function updateBoardMembership(id: string, options: Partial<UpdateB
  */
 export async function deleteBoardMembership(id: string) {
   try {
-    await plankaRequest(`/api/board-memberships/${id}`, {
+    await plankaRequest(`/api/board-memberships/${sanitizeId(id)}`, {
       method: "DELETE",
     });
     return { success: true };

@@ -3,9 +3,7 @@ import { getCard } from "../operations/cards.js";
 import { getTasks } from "../operations/tasks.js";
 import { getComments } from "../operations/comments.js";
 import { getLabels } from "../operations/labels.js";
-import { getProjects } from "../operations/projects.js";
-import { getBoards } from "../operations/boards.js";
-import { getLists } from "../operations/lists.js";
+import { getList } from "../operations/lists.js";
 
 /**
  * Zod schema for the getCardDetails function parameters
@@ -49,42 +47,21 @@ export async function getCardDetails(params: GetCardDetailsParams) {
         // Get comments for the card
         const comments = await getComments(card.id);
 
-        // Find the board ID by searching through all projects and boards
-        let boardId = null;
+        // Find the board ID: check card.boardId first, then query the card's list directly (O(1))
+        let boardId: string | null = (card as any).boardId || null;
 
-        // Get all projects
-        const projectsResponse = await getProjects(1, 100);
-        const projects = projectsResponse.items;
-
-        // For each project, get its boards
-        for (const project of projects) {
-            if (boardId) break; // Stop if we already found the board ID
-
-            const boards = await getBoards(project.id);
-
-            // For each board, get its lists
-            for (const board of boards) {
-                if (boardId) break; // Stop if we already found the board ID
-
-                const lists = await getLists(board.id);
-
-                // Check if the card's list ID is in this board
-                const matchingList = lists.find((list: any) =>
-                    list.id === card.listId
-                );
-
-                if (matchingList) {
-                    boardId = board.id;
-                    break;
+        if (!boardId && card.listId) {
+            try {
+                const list = await getList(card.listId);
+                if (list?.boardId) {
+                    boardId = list.boardId;
                 }
+            } catch {
+                boardId = null;
             }
         }
 
-        if (!boardId) {
-            throw new Error(`Could not determine board ID for card ${cardId}`);
-        }
-
-        const labels = await getLabels(boardId);
+        const labels = boardId ? await getLabels(boardId) : [];
 
         // Filter to just the labels assigned to this card
         // Note: We need to get the labelIds from the card's data

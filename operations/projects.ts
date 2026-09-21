@@ -6,7 +6,7 @@
  */
 
 import { z } from "zod";
-import { plankaRequest } from "../common/utils.js";
+import { plankaRequest, sanitizeId } from "../common/utils.js";
 import { PlankaProjectSchema } from "../common/types.js";
 
 // Schema definitions
@@ -138,7 +138,7 @@ export async function getProjects(
  */
 export async function getProject(id: string) {
   try {
-    const response = await plankaRequest(`/api/projects/${id}`);
+    const response = await plankaRequest(`/api/projects/${sanitizeId(id)}`);
     const parsedResponse = ProjectResponseSchema.parse(response);
     return parsedResponse.item;
   } catch (error) {
@@ -183,7 +183,7 @@ export async function createProject(options: CreateProjectOptions) {
  */
 export async function updateProject(id: string, options: Omit<UpdateProjectOptions, "id">) {
   try {
-    const response = await plankaRequest(`/api/projects/${id}`, {
+    const response = await plankaRequest(`/api/projects/${sanitizeId(id)}`, {
       method: "PATCH",
       body: options,
     });
@@ -206,7 +206,7 @@ export async function updateProject(id: string, options: Omit<UpdateProjectOptio
  */
 export async function deleteProject(id: string) {
   try {
-    await plankaRequest(`/api/projects/${id}`, {
+    await plankaRequest(`/api/projects/${sanitizeId(id)}`, {
       method: "DELETE",
     });
     return { success: true };

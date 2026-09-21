@@ -8,7 +8,7 @@
  */
 
 import { z } from "zod";
-import { plankaRequest } from "../common/utils.js";
+import { plankaRequest, sanitizeId } from "../common/utils.js";
 import { PlankaLabelSchema } from "../common/types.js";
 
 /**
@@ -154,7 +154,7 @@ const LabelResponseSchema = z.object({
 export async function createLabel(options: CreateLabelOptions) {
   try {
     const response = await plankaRequest(
-      `/api/boards/${options.boardId}/labels`,
+      `/api/boards/${sanitizeId(options.boardId)}/labels`,
       {
         method: "POST",
         body: {
@@ -175,7 +175,7 @@ export async function createLabel(options: CreateLabelOptions) {
 
 export async function getLabels(boardId: string) {
   try {
-    const response = await plankaRequest(`/api/boards/${boardId}/labels`);
+    const response = await plankaRequest(`/api/boards/${sanitizeId(boardId)}/labels`);
     if (response && typeof response === "object" && (response as any).items) {
       return (response as any).items;
     }
@@ -194,7 +194,7 @@ export async function getLabels(boardId: string) {
  */
 export async function getLabel(id: string) {
   try {
-    const response = await plankaRequest(`/api/labels/${id}`);
+    const response = await plankaRequest(`/api/labels/${sanitizeId(id)}`);
     const parsedResponse = LabelResponseSchema.parse(response);
     return parsedResponse.item;
   } catch (error) {
@@ -213,7 +213,7 @@ export async function getLabel(id: string) {
  */
 export async function updateLabel(id: string, options: Partial<Omit<UpdateLabelOptions, "id">>) {
   try {
-    const response = await plankaRequest(`/api/labels/${id}`, {
+    const response = await plankaRequest(`/api/labels/${sanitizeId(id)}`, {
       method: "PATCH",
       body: options,
     });
@@ -234,7 +234,7 @@ export async function updateLabel(id: string, options: Partial<Omit<UpdateLabelO
  */
 export async function deleteLabel(id: string) {
   try {
-    await plankaRequest(`/api/labels/${id}`, {
+    await plankaRequest(`/api/labels/${sanitizeId(id)}`, {
       method: "DELETE",
     });
     return { success: true };
@@ -254,7 +254,7 @@ export async function deleteLabel(id: string) {
  */
 export async function addLabelToCard(cardId: string, labelId: string) {
   try {
-    await plankaRequest(`/api/cards/${cardId}/card-labels`, {
+    await plankaRequest(`/api/cards/${sanitizeId(cardId)}/card-labels`, {
       method: "POST",
       body: { labelId },
     });
@@ -275,7 +275,7 @@ export async function addLabelToCard(cardId: string, labelId: string) {
  */
 export async function removeLabelFromCard(cardId: string, labelId: string) {
   try {
-    await plankaRequest(`/api/cards/${cardId}/card-labels/labelId:${labelId}`, {
+    await plankaRequest(`/api/cards/${sanitizeId(cardId)}/card-labels/labelId:${sanitizeId(labelId)}`, {
       method: "DELETE",
     });
     return { success: true };

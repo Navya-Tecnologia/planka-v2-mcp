@@ -6,7 +6,7 @@
  */
 
 import { z } from "zod";
-import { plankaRequest } from "../common/utils.js";
+import { plankaRequest, sanitizeId } from "../common/utils.js";
 import { PlankaTaskListSchema } from "../common/types.js";
 
 // Schema definitions
@@ -75,7 +75,7 @@ const TaskListResponseSchema = z.object({
 export async function createTaskList(options: CreateTaskListOptions) {
   try {
     const response = await plankaRequest(
-      `/api/cards/${options.cardId}/task-lists`,
+      `/api/cards/${sanitizeId(options.cardId)}/task-lists`,
       {
         method: "POST",
         body: {
@@ -101,7 +101,7 @@ export async function createTaskList(options: CreateTaskListOptions) {
  */
 export async function getTaskLists(cardId: string) {
   try {
-    const response = await plankaRequest(`/api/cards/${cardId}`);
+    const response = await plankaRequest(`/api/cards/${sanitizeId(cardId)}`);
     
     if (response && typeof response === "object" && (response as any).included && (response as any).included.taskLists) {
       return (response as any).included.taskLists;
@@ -122,7 +122,7 @@ export async function getTaskLists(cardId: string) {
  */
 export async function getTaskList(id: string) {
   try {
-    const response = await plankaRequest(`/api/task-lists/${id}`);
+    const response = await plankaRequest(`/api/task-lists/${sanitizeId(id)}`);
     const parsedResponse = TaskListResponseSchema.parse(response);
     return parsedResponse.item;
   } catch (error) {
@@ -141,7 +141,7 @@ export async function getTaskList(id: string) {
  */
 export async function updateTaskList(id: string, options: Partial<Omit<UpdateTaskListOptions, "id">>) {
   try {
-    const response = await plankaRequest(`/api/task-lists/${id}`, {
+    const response = await plankaRequest(`/api/task-lists/${sanitizeId(id)}`, {
       method: "PATCH",
       body: options,
     });
@@ -162,7 +162,7 @@ export async function updateTaskList(id: string, options: Partial<Omit<UpdateTas
  */
 export async function deleteTaskList(id: string) {
   try {
-    await plankaRequest(`/api/task-lists/${id}`, {
+    await plankaRequest(`/api/task-lists/${sanitizeId(id)}`, {
       method: "DELETE",
     });
     return { success: true };

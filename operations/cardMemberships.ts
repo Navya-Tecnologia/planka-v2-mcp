@@ -3,7 +3,8 @@
  */
 
 import { z } from "zod";
-import { plankaRequest } from "../common/utils.js";
+import { plankaRequest, sanitizeId } from "../common/utils.js";
+import { PlankaCardMembershipSchema } from "../common/types.js";
 
 // Schema definitions
 export const CreateCardMembershipSchema = z.object({
@@ -17,26 +18,18 @@ export const DeleteCardMembershipSchema = z.object({
 });
 
 // Response schema
-const CardMembershipSchema = z.object({
-  id: z.string(),
-  cardId: z.string(),
-  userId: z.string(),
-  createdAt: z.string().nullable().optional(),
-  updatedAt: z.string().nullable().optional(),
-});
-
 const CardMembershipResponseSchema = z.object({
-  item: CardMembershipSchema,
+  item: PlankaCardMembershipSchema,
 });
 
-const CardMembershipsResponseSchema = z.array(CardMembershipSchema);
+const CardMembershipsResponseSchema = z.array(PlankaCardMembershipSchema);
 
 /**
  * Retrieves all memberships for a specific card
  */
 export async function getCardMemberships(cardId: string) {
   try {
-    const response = await plankaRequest(`/api/cards/${cardId}/card-memberships`);
+    const response = await plankaRequest(`/api/cards/${sanitizeId(cardId)}/card-memberships`);
     // Note: Some Planka versions return an object with items, others return an array.
     // Let's handle both.
     if (Array.isArray(response)) {
@@ -54,7 +47,7 @@ export async function getCardMemberships(cardId: string) {
  */
 export async function createCardMembership(cardId: string, userId: string) {
   try {
-    const response = await plankaRequest(`/api/cards/${cardId}/card-memberships`, {
+    const response = await plankaRequest(`/api/cards/${sanitizeId(cardId)}/card-memberships`, {
       method: "POST",
       body: { userId },
     });
@@ -70,7 +63,7 @@ export async function createCardMembership(cardId: string, userId: string) {
  */
 export async function deleteCardMembership(cardId: string, userId: string) {
   try {
-    await plankaRequest(`/api/cards/${cardId}/card-memberships/userId:${userId}`, {
+    await plankaRequest(`/api/cards/${sanitizeId(cardId)}/card-memberships/userId:${sanitizeId(userId)}`, {
       method: "DELETE",
     });
     return { success: true };

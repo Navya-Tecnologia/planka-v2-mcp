@@ -32,11 +32,14 @@ export async function getProjectSummary(params: GetProjectSummaryParams) {
             throw new Error(`Project with ID ${projectId} not found`);
         }
 
-        // Find boards for this project using getProjects() which returns included data
-        const allProjectsRes = await getProjects(1, 100);
-        const projectBoards = (allProjectsRes.included?.boards || []).filter(
-            (board: any) => board.projectId === projectId
-        );
+        // Find boards for this project using getBoards(projectId)
+        let projectBoards = await getBoards(projectId);
+        if (!projectBoards || projectBoards.length === 0) {
+            const allProjectsRes = await getProjects(1, 100);
+            projectBoards = (allProjectsRes.included?.boards || []).filter(
+                (board: any) => board.projectId === projectId
+            );
+        }
 
         // Get summaries for each board
         const boardSummaries = await Promise.all(

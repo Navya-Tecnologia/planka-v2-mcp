@@ -24,6 +24,7 @@ import {
   getBoardSummary,
   getCardDetails,
   getProjectSummary,
+  performWorkflowAction,
 } from "./tools/index.js";
 
 import { VERSION } from "./common/version.js";
@@ -279,6 +280,7 @@ server.tool(
         "delete",
         "create_with_tasks",
         "get_details",
+        "workflow_action",
       ])
       .describe("The action to perform"),
     id: z.string().optional().describe("The ID of the card"),
@@ -321,6 +323,14 @@ server.tool(
       .string()
       .optional()
       .describe("The ID of the card to get details for"),
+    workflowAction: z
+      .enum(["start_working", "mark_completed", "move_to_testing", "move_to_done"])
+      .optional()
+      .describe("The workflow action to perform (for workflow_action action)"),
+    taskIds: z
+      .array(z.string())
+      .optional()
+      .describe("Optional task IDs to mark as completed (for workflow_action)"),
   },
   async (args) => {
     let result;
@@ -413,6 +423,22 @@ server.tool(
           cardId: args.cardId,
         });
         break;
+
+      case "workflow_action": {
+        const targetCardId = args.cardId || args.id;
+        if (!targetCardId)
+          throw new Error("cardId or id is required for workflow_action action");
+        if (!args.workflowAction)
+          throw new Error("workflowAction is required for workflow_action action");
+        result = await performWorkflowAction({
+          action: args.workflowAction,
+          cardId: targetCardId,
+          comment: args.comment,
+          taskIds: args.taskIds,
+          boardId: args.boardId,
+        });
+        break;
+      }
 
       default:
         throw new Error(`Unknown action: ${args.action}`);

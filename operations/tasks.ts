@@ -7,7 +7,7 @@
  */
 
 import { z } from "zod";
-import { plankaRequest } from "../common/utils.js";
+import { plankaRequest, sanitizeId } from "../common/utils.js";
 import { PlankaTaskSchema } from "../common/types.js";
 import * as taskLists from "./taskLists.js";
 
@@ -129,7 +129,7 @@ export async function createTask(options: CreateTaskOptions) {
     }
 
     const response = await plankaRequest(
-      `/api/task-lists/${targetTaskListId}/tasks`,
+      `/api/task-lists/${sanitizeId(targetTaskListId)}/tasks`,
       {
         method: "POST",
         body: {
@@ -183,7 +183,7 @@ export async function batchCreateTasks(options: BatchCreateTasksOptions) {
  */
 export async function getTaskListTasks(taskListId: string) {
   try {
-    const response = await plankaRequest(`/api/task-lists/${taskListId}`);
+    const response = await plankaRequest(`/api/task-lists/${sanitizeId(taskListId)}`);
     
     if (response && typeof response === "object" && (response as any).included && (response as any).included.tasks) {
       return (response as any).included.tasks;
@@ -205,14 +205,10 @@ export async function getTaskListTasks(taskListId: string) {
 export async function getTasks(cardId: string) {
   try {
     const lists = await taskLists.getTaskLists(cardId);
-    const allTasks = [];
-
-    for (const list of lists) {
-      const tasks = await getTaskListTasks(list.id);
-      allTasks.push(...tasks);
-    }
-
-    return allTasks;
+    const tasksArrays = await Promise.all(
+      lists.map((list: any) => getTaskListTasks(list.id))
+    );
+    return tasksArrays.flat();
   } catch (error) {
     console.error(`Error getting tasks for card ${cardId}:`, error);
     return [];
@@ -227,7 +223,7 @@ export async function getTasks(cardId: string) {
  */
 export async function getTask(id: string) {
   try {
-    const response = await plankaRequest(`/api/tasks/${id}`);
+    const response = await plankaRequest(`/api/tasks/${sanitizeId(id)}`);
     
     // Check if the response is wrapped in 'item' or is the item itself
     if (response && typeof response === "object") {
@@ -255,7 +251,7 @@ export async function getTask(id: string) {
 export async function updateTask(id: string, options: Partial<UpdateTaskOptions>) {
   try {
     const { id: _, ...updateData } = options;
-    const response = await plankaRequest(`/api/tasks/${id}`, {
+    const response = await plankaRequest(`/api/tasks/${sanitizeId(id)}`, {
       method: "PATCH",
       body: updateData,
     });
@@ -276,7 +272,7 @@ export async function updateTask(id: string, options: Partial<UpdateTaskOptions>
  */
 export async function deleteTask(id: string) {
   try {
-    await plankaRequest(`/api/tasks/${id}`, {
+    await plankaRequest(`/api/tasks/${sanitizeId(id)}`, {
       method: "DELETE",
     });
     return { success: true };

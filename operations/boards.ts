@@ -7,7 +7,7 @@
  */
 
 import { z } from "zod";
-import { plankaRequest } from "../common/utils.js";
+import { plankaRequest, sanitizeId } from "../common/utils.js";
 import { PlankaBoardSchema } from "../common/types.js";
 import { getAdminUserId } from "../common/setup.js";
 import * as boardMemberships from "./boardMemberships.js";
@@ -110,13 +110,15 @@ async function createDefaultLists(boardId: string) {
       { name: "Done", position: 393210, type: "active" },
     ];
 
-    for (const list of defaultLists) {
-      await lists.createList({
-        boardId,
-        name: list.name,
-        position: list.position,
-      });
-    }
+    await Promise.all(
+      defaultLists.map((list) =>
+        lists.createList({
+          boardId,
+          name: list.name,
+          position: list.position,
+        })
+      )
+    );
   } catch (error) {
     console.error(
       `Error creating default lists for board ${boardId}:`,
@@ -161,14 +163,16 @@ async function createDefaultLabels(boardId: string) {
       ...statusLabels,
     ];
 
-    for (const label of defaultLabels) {
-      await labels.createLabel({
-        boardId,
-        name: label.name,
-        color: label.color as any, // Type assertion needed due to enum constraints
-        position: label.position,
-      });
-    }
+    await Promise.all(
+      defaultLabels.map((label) =>
+        labels.createLabel({
+          boardId,
+          name: label.name,
+          color: label.color as any, // Type assertion needed due to enum constraints
+          position: label.position,
+        })
+      )
+    );
   } catch (error) {
     console.error(
       `Error creating default labels for board ${boardId}:`,
@@ -190,7 +194,7 @@ async function createDefaultLabels(boardId: string) {
 export async function createBoard(options: CreateBoardOptions) {
   try {
     const response = await plankaRequest(
-      `/api/projects/${options.projectId}/boards`,
+      `/api/projects/${sanitizeId(options.projectId)}/boards`,
       {
         method: "POST",
         body: {
@@ -241,7 +245,7 @@ export async function createBoard(options: CreateBoardOptions) {
  */
 export async function getBoards(projectId: string) {
   try {
-    const response = await plankaRequest(`/api/projects/${projectId}`);
+    const response = await plankaRequest(`/api/projects/${sanitizeId(projectId)}`);
     
     if (response && typeof response === "object" && (response as any).included && (response as any).included.boards) {
       return (response as any).included.boards;
@@ -263,7 +267,7 @@ export async function getBoards(projectId: string) {
  */
 export async function getBoard(id: string) {
   try {
-    const response = await plankaRequest(`/api/boards/${id}`);
+    const response = await plankaRequest(`/api/boards/${sanitizeId(id)}`);
     const parsedResponse = BoardResponseSchema.parse(response);
     return parsedResponse.item;
   } catch (error) {
@@ -286,7 +290,7 @@ export async function updateBoard(
   options: Partial<Omit<UpdateBoardOptions, "id">>,
 ) {
   try {
-    const response = await plankaRequest(`/api/boards/${id}`, {
+    const response = await plankaRequest(`/api/boards/${sanitizeId(id)}`, {
       method: "PATCH",
       body: options,
     });
@@ -308,7 +312,7 @@ export async function updateBoard(
  */
 export async function deleteBoard(id: string) {
   try {
-    await plankaRequest(`/api/boards/${id}`, {
+    await plankaRequest(`/api/boards/${sanitizeId(id)}`, {
       method: "DELETE",
     });
     return { success: true };

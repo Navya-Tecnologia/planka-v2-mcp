@@ -3,7 +3,8 @@
  */
 
 import { z } from "zod";
-import { plankaRequest } from "../common/utils.js";
+import { plankaRequest, sanitizeId } from "../common/utils.js";
+import { PlankaUserSchema } from "../common/types.js";
 
 // Schema definitions
 export const GetUsersSchema = z.object({
@@ -16,20 +17,12 @@ export const GetUserSchema = z.object({
 });
 
 // Response schemas
-const UserSchema = z.object({
-  id: z.string(),
-  email: z.string().nullable().optional(),
-  name: z.string().nullable().optional(),
-  username: z.string().nullable().optional(),
-  avatarUrl: z.string().nullable().optional(),
-});
-
 const UsersResponseSchema = z.object({
-  items: z.array(UserSchema),
+  items: z.array(PlankaUserSchema),
 });
 
 const UserResponseSchema = z.object({
-  item: UserSchema,
+  item: PlankaUserSchema,
 });
 
 /**
@@ -50,7 +43,7 @@ export async function getUsers(page: number = 1, perPage: number = 100) {
  */
 export async function getUser(id: string) {
   try {
-    const response = await plankaRequest(`/api/users/${id}`);
+    const response = await plankaRequest(`/api/users/${sanitizeId(id)}`);
     const parsedResponse = UserResponseSchema.parse(response);
     return parsedResponse.item;
   } catch (error) {

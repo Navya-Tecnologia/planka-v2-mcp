@@ -13,6 +13,7 @@ A specialized Model Context Protocol (MCP) server that enables LLMs (like Claude
 - **👥 Unified Membership Management**: Assign users to cards by **Email** or **Username** without needing their ID first.
 - **🚀 Project-First Defaults**: New cards are created as **type "project"** by default to ensure subtasks and checklists are immediately visible.
 - **🗂️ Consolidated Managers**: Grouped tools (Card Manager, Project Manager, etc.) to optimize LLM interaction and stay under tool limits.
+- **⚡ Workflow Automation**: Built-in `workflow_action` on `mcp_kanban_card_manager` allowing single-call card status progression (`start_working`, `mark_completed`, `move_to_testing`, `move_to_done`) with optional comments and task completion.
 - **📊 Aggregate Summaries**: New tools for comprehensive data retrieval:
   | Tool Name | Parameters | Description |
   |---|---|---|
@@ -85,15 +86,18 @@ npm install
 # Build the project
 npm run build
 
-# Run in development mode
-npm run dev
+# Run unit tests (offline, in-memory)
+npm test
 
-# Run quality checks
+# Run integration tests (requires running Planka instance)
+npm run test:integration
+
+# Run quality checks (build + unit tests)
 npm run qc
+```
 
 ### 🚀 Automated Releases
-This project is configured for automated releases via **GitHub Actions**. Pushing a tag in the format `v*` (e.g., `v1.3.4`) will automatically build, test, and publish the package to **NPM** and create a **GitHub Release**.
-```
+This project is configured for automated releases via **GitHub Actions**. Pushing a tag in the format `v*` (e.g., `v1.3.5`) will automatically run tests, build, publish the package to **NPM**, and create a **GitHub Release**.
 
 ---
 *This project focuses exclusively on the MCP interface. For Planka server setup, refer to the [official Planka documentation](https://docs.planka.app).*

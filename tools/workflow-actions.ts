@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { getCard, moveCard } from "../operations/cards.js";
 import { createComment } from "../operations/comments.js";
-import { getLists } from "../operations/lists.js";
+import { getList, getLists } from "../operations/lists.js";
 import { getBoard } from "../operations/boards.js";
 import { getTask, updateTask } from "../operations/tasks.js";
 
@@ -67,10 +67,17 @@ export async function performWorkflowAction(params: WorkflowActionParams) {
         // Use the provided boardId or try to determine it
         let boardId = providedBoardId;
 
-        if (!boardId) {
-            // Try to get the boardId from the card response
-            // @ts-ignore - Some card responses include boardId
+        if (!boardId && card.boardId) {
             boardId = card.boardId;
+        }
+
+        if (!boardId && card.listId) {
+            try {
+                const list = await getList(card.listId);
+                boardId = list?.boardId;
+            } catch {
+                // fall through
+            }
         }
 
         if (!boardId) {

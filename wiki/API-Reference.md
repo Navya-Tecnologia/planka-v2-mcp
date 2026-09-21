@@ -38,11 +38,12 @@ All functionality is grouped into **Manager Tools**. Each tool accepts an `actio
 
 ## 🗂️ Card Management
 **Tool**: `mcp_kanban_card_manager`
-- **Actions**: `get_all`, `create`, `get_one`, `update`, `move`, `duplicate`, `delete`.
+- **Actions**: `get_all`, `create`, `get_one`, `update`, `move`, `duplicate`, `delete`, `workflow_action`.
 - **v2.x Features**:
   - `create`: Defaults to `type: "project"`.
   - `update`: Now supports changing the **Card Type** (`project` or `story`).
   - `move`: Supports moving cards between boards.
+  - `workflow_action`: Execute structured workflow operations (`start`, `block`, `unblock`, `review`, `complete`, `archive`) with automated list transition, task completion/addition, and audit comments. Parameters: `id` (Card ID), `workflowAction`, and optional `taskIds`.
 
 ---
 

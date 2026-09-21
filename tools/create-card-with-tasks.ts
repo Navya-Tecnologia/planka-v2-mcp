@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createCard } from "../operations/cards.js";
 import { createTask } from "../operations/tasks.js";
+import { createTaskList } from "../operations/taskLists.js";
 import { createComment } from "../operations/comments.js";
 
 /**
@@ -64,21 +65,23 @@ export async function createCardWithTasks(params: CreateCardWithTasksParams) {
             position,
         });
 
-        // Create tasks if provided
-        const createdTasks = [];
+        // Create tasks if provided (create a single task list upfront and parallelize task creation)
+        let createdTasks: any[] = [];
         if (tasks && tasks.length > 0) {
-            for (let i = 0; i < tasks.length; i++) {
-                const taskName = tasks[i];
-                // Calculate position for each task (65535, 131070, 196605, etc.)
-                const taskPosition = 65535 * (i + 1);
+            const taskList = await createTaskList({
+                cardId: card.id,
+                name: "Tasks",
+            });
 
-                const task = await createTask({
-                    cardId: card.id,
-                    name: taskName,
-                    position: taskPosition,
-                });
-                createdTasks.push(task);
-            }
+            createdTasks = await Promise.all(
+                tasks.map((taskName, i) =>
+                    createTask({
+                        taskListId: taskList.id,
+                        name: taskName,
+                        position: 65535 * (i + 1),
+                    })
+                )
+            );
         }
 
         // Add a comment if provided

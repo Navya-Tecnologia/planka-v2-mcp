@@ -7,7 +7,7 @@
  */
 
 import { z } from "zod";
-import { plankaRequest } from "../common/utils.js";
+import { plankaRequest, sanitizeId } from "../common/utils.js";
 import { PlankaCommentSchema } from "../common/types.js";
 
 // Schema definitions
@@ -80,7 +80,7 @@ const CommentResponseSchema = z.object({
 export async function createComment(options: CreateCommentOptions) {
   try {
     const response = await plankaRequest(
-      `/api/cards/${options.cardId}/comments`,
+      `/api/cards/${sanitizeId(options.cardId)}/comments`,
       {
         method: "POST",
         body: {
@@ -105,7 +105,7 @@ export async function createComment(options: CreateCommentOptions) {
  */
 export async function getComments(cardId: string) {
   try {
-    const response = await plankaRequest(`/api/cards/${cardId}/comments`);
+    const response = await plankaRequest(`/api/cards/${sanitizeId(cardId)}/comments`);
     const parsedResponse = CommentsResponseSchema.parse(response);
     return parsedResponse.items;
   } catch (error) {
@@ -122,7 +122,7 @@ export async function getComments(cardId: string) {
  */
 export async function getComment(id: string) {
   try {
-    const response = await plankaRequest(`/api/comments/${id}`);
+    const response = await plankaRequest(`/api/comments/${sanitizeId(id)}`);
     const parsedResponse = CommentResponseSchema.parse(response);
     return parsedResponse.item;
   } catch (error) {
@@ -144,7 +144,7 @@ export async function updateComment(
   options: Partial<Omit<UpdateCommentOptions, "id">>,
 ) {
   try {
-    const response = await plankaRequest(`/api/comments/${id}`, {
+    const response = await plankaRequest(`/api/comments/${sanitizeId(id)}`, {
       method: "PATCH",
       body: {
         text: options.text,
@@ -167,7 +167,7 @@ export async function updateComment(
  */
 export async function deleteComment(id: string) {
   try {
-    await plankaRequest(`/api/comments/${id}`, {
+    await plankaRequest(`/api/comments/${sanitizeId(id)}`, {
       method: "DELETE",
     });
     return { success: true };
