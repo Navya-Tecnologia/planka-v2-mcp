@@ -64,6 +64,37 @@ If you have the code locally, pointing to the built file:
 }
 ```
 
+#### 🌐 HTTP SSE Mode (Remote / Cloud Agents)
+
+You can run the server in **HTTP Server-Sent Events (SSE)** mode to connect remote clients or centralize deployment:
+
+```bash
+# Start directly via CLI
+npx -y @navyatec/planka-v2-mcp --transport sse --port 3000
+
+# Or using environment variables
+export MCP_TRANSPORT=sse
+export PORT=3000
+export MCP_API_KEY=your-optional-bearer-key
+node dist/index.js
+```
+
+**SSE Endpoints**:
+- `GET http://localhost:3000/sse`: Persistent SSE stream handshake (`?token=...` supported)
+- `POST http://localhost:3000/messages?sessionId=...`: Client JSON-RPC requests
+- `GET http://localhost:3000/health`: Service healthcheck
+
+#### 🐳 Docker & GHCR
+Run directly from GitHub Container Registry:
+```bash
+docker run -d -p 3000:3000 \
+  -e PLANKA_BASE_URL="http://your-planka-instance:3333" \
+  -e PLANKA_AGENT_EMAIL="agent@yourdomain.com" \
+  -e PLANKA_AGENT_PASSWORD="your-secure-password" \
+  -e MCP_API_KEY="optional-mcp-bearer-token" \
+  ghcr.io/navya-tecnologia/planka-v2-mcp:latest
+```
+
 Ask Claude:
 - "Groom the Backlog board and break down the top card into tasks."
 - "Start tracking time for the 'UI Implementation' card."

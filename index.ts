@@ -28,20 +28,22 @@ import {
 } from "./tools/index.js";
 
 import { VERSION } from "./common/version.js";
+import { startHttpSseServer } from "./transport/httpServer.js";
 
-const server = new McpServer(
-  {
-    name: "planka-mcp-server",
-    version: VERSION,
-  },
-  {
-    capabilities: {
-      tools: {},
+export function createKanbanServer(): McpServer {
+  const server = new McpServer(
+    {
+      name: "planka-mcp-server",
+      version: VERSION,
     },
-  }
-);
+    {
+      capabilities: {
+        tools: {},
+      },
+    }
+  );
 
-// ----- CONSOLIDATED KANBAN TOOLS -----
+  // ----- CONSOLIDATED KANBAN TOOLS -----
 
 // 1. Project and Board Manager
 server.tool(
@@ -949,14 +951,67 @@ server.tool(
       content: [{ type: "text", text: JSON.stringify(result) }],
     };
   }
-);
+  );
+
+  return server;
+}
+
+export interface ServerCliOptions {
+  transport: "stdio" | "sse";
+  port?: number;
+  host?: string;
+}
+
+export function parseCliArgs(args: string[]): ServerCliOptions {
+  let transport: "stdio" | "sse" =
+    (process.env.MCP_TRANSPORT?.toLowerCase() as "stdio" | "sse") || "stdio";
+  let port: number | undefined = process.env.PORT ? parseInt(process.env.PORT, 10) : undefined;
+  let host: string | undefined = process.env.HOST;
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === "--transport" && args[i + 1]) {
+      const val = args[++i].toLowerCase();
+      if (val === "sse" || val === "stdio") {
+        transport = val;
+      }
+    } else if (arg.startsWith("--transport=")) {
+      const val = arg.split("=")[1].toLowerCase();
+      if (val === "sse" || val === "stdio") {
+        transport = val;
+      }
+    } else if (arg === "--port" && args[i + 1]) {
+      port = parseInt(args[++i], 10);
+    } else if (arg.startsWith("--port=")) {
+      port = parseInt(arg.split("=")[1], 10);
+    } else if (arg === "--host" && args[i + 1]) {
+      host = args[++i];
+    } else if (arg.startsWith("--host=")) {
+      host = arg.split("=")[1];
+    }
+  }
+
+  return { transport, port, host };
+}
 
 async function runServer() {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
+  const options = parseCliArgs(process.argv.slice(2));
+
+  if (options.transport === "sse") {
+    await startHttpSseServer({
+      port: options.port,
+      host: options.host,
+      serverFactory: createKanbanServer,
+    });
+  } else {
+    const server = createKanbanServer();
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
+  }
 }
 
 runServer().catch((err) => {
   console.error("Error running server:", err);
   process.exit(1);
 });
+

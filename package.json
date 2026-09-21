@@ -27,6 +27,7 @@
     "restart": "docker compose --env-file .env restart",
     "build-docker": "npm run build && docker build -t mcp-kanban:latest .",
     "start-node": "node dist/index.js",
+    "start:sse": "node dist/index.js --transport sse",
     "inspector": "SERVER_PORT=3008 CLIENT_PORT=5174 npx -y @modelcontextprotocol/inspector node dist/index.js",
     "inspector:demo": "SERVER_PORT=3008 CLIENT_PORT=5174 npx -y @modelcontextprotocol/inspector node dist/index.js",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --testMatch='**/tests/unit/**/*.test.ts'",

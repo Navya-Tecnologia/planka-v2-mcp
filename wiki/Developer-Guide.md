@@ -30,6 +30,8 @@ kanban-mcp/
 │   └── boardMemberships.ts  # Membership operations
 ├── index.ts                # Main entry point & MCP tool definitions
 ├── tools/                  # Aggregated tools (Board/Project summaries, etc.)
+├── transport/              # Network transports (HTTP SSE & Session management)
+│   └── httpServer.ts       # Native Node.js HTTP SSE server, CORS & Bearer Auth
 ├── tests/                  # Integration and unit tests
 ├── .agent/                 # Agent-specific rules and skills
 ├── .env                    # Environment variables
@@ -102,7 +104,7 @@ npx jest tests/integration.test.ts
 
 ## 🚀 Automated Releases (CI/CD)
 
-The project uses **GitHub Actions** to automate the publishing of new versions to **NPM** and **GitHub Releases**.
+The project uses **GitHub Actions** to automate the publishing of new versions to **NPM**, **GitHub Releases**, and **GitHub Container Registry (GHCR)**.
 
 ### 🛠️ Configuration
 To enable automated releases, the following secret must be configured in GitHub (`Settings > Secrets and variables > Actions`):
@@ -131,3 +133,4 @@ Once the tag is pushed, the `publish.yml` workflow will:
 2. **NPM Pack**: Create the production tarball (`.tgz`).
 3. **GitHub Release**: Create a new release in the repository and attach the tarball.
 4. **NPM Publish**: Upload the package to the official NPM registry.
+5. **GHCR Docker Publish**: Build multi-stage Docker image and push to `ghcr.io/navya-tecnologia/planka-v2-mcp` with semantic version and `latest` tags.

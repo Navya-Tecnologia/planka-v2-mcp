@@ -1,55 +1,47 @@
-FROM node:22.12-alpine AS builder
-
-# Install pnpm
-RUN npm install -g pnpm
-
-# Set environment variables to avoid prompts
-ENV PNPM_HOME="/root/.local/share/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
-ENV CI=true
-
-# Copy the entire project
-COPY . /app
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Use --force to skip prompts
-RUN pnpm install --force
+# Copy package manifests
+COPY package*.json tsconfig.json ./
 
-# Build the project
+# Install all dependencies including devDependencies for build
+RUN npm ci
+
+# Copy source files
+COPY common ./common
+COPY operations ./operations
+COPY tools ./tools
+COPY transport ./transport
+COPY index.ts ./
+
+# Build TypeScript to dist/
 RUN npm run build
 
-FROM node:22.12-alpine AS release
+# -----------------------------------------------------------
+FROM node:22-alpine AS release
 
-# Install pnpm
-RUN npm install -g pnpm
-
-# Set environment variables to avoid prompts
-ENV PNPM_HOME="/root/.local/share/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
-ENV CI=true
-
-COPY --from=builder /app/dist /app/dist
-COPY --from=builder /app/package.json /app/package.json
-COPY --from=builder /app/pnpm-lock.yaml /app/pnpm-lock.yaml
-
-ENV NODE_ENV=production
+ENV NODE_ENV=production \
+    MCP_TRANSPORT=sse \
+    PORT=3000 \
+    HOST=0.0.0.0
 
 WORKDIR /app
 
-# Create directory for attachments
-RUN mkdir -p /app/attachments
+# Copy package manifests and install only production dependencies
+COPY package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
 
-# Use --force to skip prompts
-RUN pnpm install --prod --force --ignore-scripts
+# Copy compiled artifacts from builder
+COPY --from=builder /app/dist ./dist
 
-# Set ownership to node user
-RUN chown -R node:node /app
+# Create directory for attachments with node user permissions
+RUN mkdir -p /app/attachments && chown -R node:node /app
 
-# Define volume for attachments
 VOLUME ["/app/attachments"]
 
-# Run as non-root user
+EXPOSE 3000
+
 USER node
 
-ENTRYPOINT ["node", "dist/index.js"] 
+ENTRYPOINT ["node", "dist/index.js"]
