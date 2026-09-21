@@ -10,11 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.4.0] - 2026-09-21
 
 ### Added
+- **Multi-Tenant Per-Call Planka Credentials**: In HTTP SSE mode, user credentials no longer need to be defined in `.env`. Each user passes their own Planka credentials upon connecting to `/sse` via HTTP headers (`X-Planka-Email`, `X-Planka-Password`, `X-Planka-Base-Url`, `X-Planka-Token`, Basic Auth) or query parameters (`?email=...&password=...`).
+- **User Session Context Isolation**: Integrated Node.js `AsyncLocalStorage` in `common/context.ts` to scope Planka JWT tokens and user identities per SSE session. All actions, card creations, task updates, and comments are recorded in Planka attributed to the individual user.
 - **HTTP SSE Network Transport**: Implemented native Node.js HTTP Server-Sent Events transport (`SSEServerTransport`) in `transport/httpServer.ts`, exposing `/sse`, `/messages`, and `/health` endpoints with full CORS support.
 - **Dual Transport Mode**: Supported switching between default `stdio` and `sse` via CLI flags (`--transport sse`, `--port`, `--host`) or environment variables (`MCP_TRANSPORT=sse`, `PORT=3000`).
 - **Optional Bearer Token Authentication**: Added `MCP_API_KEY` verification via `Authorization: Bearer <key>` header and `?token=`/`?apiKey=` query parameters for secure remote SSE deployments.
 - **Docker Modernization & GHCR Publishing**: Modernized `Dockerfile` with multi-stage build, non-root user, and SSE defaults (`EXPOSE 3000`). Automated container image publication to GitHub Container Registry (`ghcr.io/navya-tecnologia/planka-v2-mcp`) in `publish.yml`.
-- **SSE Unit Test Suite**: Added comprehensive unit tests (`tests/unit/sse-server.test.ts`) covering CLI parsing, auth validation, and SSE endpoints (raising total test suite to 30 tests).
+- **Comprehensive Unit Test Suite**: Added isolated unit tests for SSE server, CLI parsing, auth validation, and multi-tenant session isolation (`tests/unit/sse-server.test.ts` and `tests/unit/multitenant.test.ts`, raising total test suite to 37 tests).
 
 ---
 

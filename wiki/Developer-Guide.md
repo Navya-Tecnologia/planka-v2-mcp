@@ -16,6 +16,7 @@ The Kanban MCP is a Node.js server that implements the Model Context Protocol (M
 kanban-mcp/
 ├── common/                 # Common utilities and global types
 │   ├── types.ts            # Planka v2.0 Zod schemas and TS types
+│   ├── context.ts          # Multi-tenant AsyncLocalStorage auth context
 │   ├── errors.ts           # Unified error handling
 │   └── utils.ts            # API client (plankaRequest)
 ├── operations/             # Business logic for Planka entities

@@ -2,17 +2,29 @@
 let adminUserId: string | null = null;
 
 import { getUserIdByEmail, getUserIdByUsername } from "./utils.js";
+import { getActivePlankaContext } from "./context.js";
 
 /**
- * Gets the admin user ID by looking up the user by email or username
- *
- * This function will try the following methods in order:
- * 1. Use the cached admin user ID if available
- * 2. Use the PLANKA_ADMIN_ID environment variable if set (for backwards compatibility)
- * 3. Look up the admin user ID by email using PLANKA_ADMIN_EMAIL
- * 4. Look up the admin user ID by username using PLANKA_ADMIN_USERNAME
+ * Gets the current user ID or admin user ID by looking up the user by email or username.
+ * When running in a multi-tenant session context, resolves the current authenticated user's ID.
  */
 export async function getAdminUserId(): Promise<string | null> {
+    const context = getActivePlankaContext();
+    if (context?.userId) {
+        return context.userId;
+    }
+    if (context?.email) {
+        try {
+            const id = await getUserIdByEmail(context.email);
+            if (id) {
+                context.userId = id;
+                return id;
+            }
+        } catch {
+            // Fall through to fallback
+        }
+    }
+
     if (adminUserId) {
         return adminUserId;
     }

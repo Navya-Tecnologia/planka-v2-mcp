@@ -29,8 +29,9 @@ import {
 
 import { VERSION } from "./common/version.js";
 import { startHttpSseServer } from "./transport/httpServer.js";
+import { PlankaAuthContext } from "./common/context.js";
 
-export function createKanbanServer(): McpServer {
+export function createKanbanServer(sessionContext?: PlankaAuthContext): McpServer {
   const server = new McpServer(
     {
       name: "planka-mcp-server",

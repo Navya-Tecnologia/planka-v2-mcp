@@ -3,6 +3,7 @@ import fetch, { Response } from "node-fetch";
 import { getUserAgent } from "universal-user-agent";
 import { createPlankaError } from "./errors.js";
 import { VERSION } from "./version.js";
+import { getActivePlankaContext, PlankaAuthContext } from "./context.js";
 
 // Global variables to store tokens
 let agentToken: string | null = null;
@@ -14,8 +15,9 @@ const insecureHttpsAgent = new https.Agent({
 
 let warnedInsecureTls = false;
 
-function getHttpsAgent(url: string): https.Agent | undefined {
-  if (process.env.PLANKA_IGNORE_SSL === "true" && url.startsWith("https:")) {
+function getHttpsAgent(url: string, ignoreSslOverride?: boolean): https.Agent | undefined {
+  const ignoreSsl = ignoreSslOverride ?? (process.env.PLANKA_IGNORE_SSL === "true");
+  if (ignoreSsl && url.startsWith("https:")) {
     if (!warnedInsecureTls) {
       console.error(
         "[SECURITY WARNING] PLANKA_IGNORE_SSL is enabled. TLS verification is disabled only for Planka HTTPS requests.",
@@ -59,18 +61,24 @@ export function buildUrl(
 const USER_AGENT =
   `modelcontextprotocol/servers/planka/v${VERSION} ${getUserAgent()}`;
 
-async function authenticateAgent(): Promise<string> {
-  const email = process.env.PLANKA_AGENT_EMAIL;
-  const password = process.env.PLANKA_AGENT_PASSWORD;
+export async function authenticatePlankaUser(
+  context: PlankaAuthContext,
+): Promise<string> {
+  // If user already provided a pre-generated JWT token, use it directly
+  if (context.token) {
+    return context.token;
+  }
+
+  const email = context.email || process.env.PLANKA_AGENT_EMAIL;
+  const password = context.password || process.env.PLANKA_AGENT_PASSWORD;
+  const baseUrl = context.baseUrl || process.env.PLANKA_BASE_URL || "http://localhost:3000";
 
   if (!email || !password) {
     throw new Error(
-      "PLANKA_AGENT_EMAIL and PLANKA_AGENT_PASSWORD environment variables are required",
+      "Planka email/username and password are required. Provide them in the request (headers/query) or via PLANKA_AGENT_EMAIL and PLANKA_AGENT_PASSWORD environment variables.",
     );
   }
 
-  const baseUrl = process.env.PLANKA_BASE_URL || "http://localhost:3000";
-  // Normalize the base URL to not end with /api
   const normalizedBaseUrl = baseUrl.endsWith("/api")
     ? baseUrl.slice(0, -4)
     : baseUrl;
@@ -78,7 +86,7 @@ async function authenticateAgent(): Promise<string> {
   const url = new URL("/api/access-tokens", normalizedBaseUrl).toString();
 
   try {
-    const agent = getHttpsAgent(url);
+    const agent = getHttpsAgent(url, context.ignoreSsl);
     const response = await fetch(url, {
       method: "POST",
       headers: {
@@ -101,18 +109,35 @@ async function authenticateAgent(): Promise<string> {
 
     // The token is directly in the item field
     const { item } = responseBody as { item: string };
-    agentToken = item;
+    context.token = item;
     return item;
   } catch (error: unknown) {
-    // Rethrow with more context
     const errorMessage = error instanceof Error ? error.message : String(error);
     throw new Error(
-      `Failed to authenticate agent with Planka: ${errorMessage}`,
+      `Failed to authenticate with Planka: ${errorMessage}`,
     );
   }
 }
 
-async function getAuthToken(): Promise<string> {
+async function authenticateAgent(): Promise<string> {
+  const email = process.env.PLANKA_AGENT_EMAIL;
+  const password = process.env.PLANKA_AGENT_PASSWORD;
+  const baseUrl = process.env.PLANKA_BASE_URL || "http://localhost:3000";
+
+  const token = await authenticatePlankaUser({ email, password, baseUrl });
+  agentToken = token;
+  return token;
+}
+
+export async function getAuthToken(): Promise<string> {
+  const context = getActivePlankaContext();
+  if (context) {
+    if (context.token) {
+      return context.token;
+    }
+    return authenticatePlankaUser(context);
+  }
+
   if (agentToken) {
     return agentToken;
   }
@@ -123,7 +148,8 @@ export async function plankaRequest(
   path: string,
   options: RequestOptions = {},
 ): Promise<unknown> {
-  const baseUrl = process.env.PLANKA_BASE_URL || "http://localhost:3000";
+  const context = getActivePlankaContext();
+  const baseUrl = context?.baseUrl || process.env.PLANKA_BASE_URL || "http://localhost:3000";
 
   // Normalize the base URL to not end with /api
   const normalizedBaseUrl = baseUrl.endsWith("/api")
@@ -174,7 +200,7 @@ export async function plankaRequest(
   }
 
   try {
-    const agent = getHttpsAgent(url);
+    const agent = getHttpsAgent(url, context?.ignoreSsl);
     const response = await fetch(url, {
       method: options.method || "GET",
       headers,
@@ -191,7 +217,11 @@ export async function plankaRequest(
     if (!response.ok) {
       // Auto-retry once on 401 with refreshed token
       if (response.status === 401 && !options.skipAuth && !options._isRetry) {
-        agentToken = null;
+        if (context) {
+          context.token = undefined;
+        } else {
+          agentToken = null;
+        }
         return plankaRequest(path, { ...options, _isRetry: true });
       }
       throw createPlankaError(response.status, responseBody);
@@ -204,6 +234,7 @@ export async function plankaRequest(
     throw new Error(`Failed to make Planka request: ${errorMessage}`);
   }
 }
+
 
 export function validateProjectName(name: string): string {
   const sanitized = name.trim();
