@@ -1,7 +1,7 @@
 services:
   planka-mcp:
-    container_name: planka-mcp
-    image: planka-mcp:latest
+    container_name: ${CONTAINER_NAME:-planka-mcp}
+    image: ${IMAGE_NAME:-planka-mcp:latest}
     build:
       context: .
       dockerfile: Dockerfile
@@ -15,20 +15,29 @@ services:
       - PORT=3000
       - HOST=0.0.0.0
       - PLANKA_BASE_URL=${PLANKA_BASE_URL}
-      - PLANKA_AGENT_EMAIL=${PLANKA_AGENT_EMAIL}
-      - PLANKA_AGENT_PASSWORD=${PLANKA_AGENT_PASSWORD}
+      - PLANKA_AGENT_EMAIL=${PLANKA_AGENT_EMAIL:-}
+      - PLANKA_AGENT_PASSWORD=${PLANKA_AGENT_PASSWORD:-}
       - PLANKA_IGNORE_SSL=${PLANKA_IGNORE_SSL:-false}
+      - PLANKA_ALLOWED_HOSTS=${PLANKA_ALLOWED_HOSTS:-}
+      - ALLOW_ANONYMOUS_ENV_FALLBACK=${ALLOW_ANONYMOUS_ENV_FALLBACK:-true}
       - MCP_API_KEY=${MCP_API_KEY:-}
       - MCP_SKILL_FILE_PATH=${MCP_SKILL_FILE_PATH:-/app/docs/private/satya-planka-skill.md}
     volumes:
       - planka-attachments:/app/attachments
       - ${PRIVATE_SKILLS_PATH:-/docker/planka-mcp/docs/private}:/app/docs/private:ro
     networks:
-      - net_mcp
+      - mcp-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 volumes:
   planka-attachments:
 
 networks:
-  net_mcp:
+  mcp-network:
+    name: ${MCP_NETWORK:-net_mcp}
     external: true
