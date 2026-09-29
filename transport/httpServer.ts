@@ -1,6 +1,6 @@
 import http from "node:http";
 import { URL } from "node:url";
-import { randomUUID } from "node:crypto";
+import { randomUUID, timingSafeEqual } from "node:crypto";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -24,6 +24,27 @@ export interface ActiveSession {
   context: PlankaAuthContext;
 }
 
+function safeCompare(a?: string, b?: string): boolean {
+  if (!a || !b) return false;
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return timingSafeEqual(bufA, bufB);
+}
+
+function isValidBaseUrl(urlStr: string): boolean {
+  try {
+    const u = new URL(urlStr);
+    if (u.protocol !== "http:" && u.protocol !== "https:") return false;
+    const hostname = u.hostname.toLowerCase();
+    // Block cloud metadata service IP/hostnames
+    if (hostname === "169.254.169.254" || hostname === "metadata.google.internal") return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function checkAuth(
   req: http.IncomingMessage,
   expectedApiKey?: string,
@@ -35,7 +56,7 @@ export function checkAuth(
   const authHeader = req.headers.authorization;
   if (authHeader) {
     const parts = authHeader.split(" ");
-    if (parts.length === 2 && parts[0].toLowerCase() === "bearer" && parts[1] === expectedApiKey) {
+    if (parts.length === 2 && parts[0].toLowerCase() === "bearer" && safeCompare(parts[1], expectedApiKey)) {
       return true;
     }
   }
@@ -43,7 +64,7 @@ export function checkAuth(
   // Check query parameters: token or apiKey (convenient for SSE EventSource clients)
   if (parsedUrl) {
     const token = parsedUrl.searchParams.get("token") || parsedUrl.searchParams.get("apiKey");
-    if (token === expectedApiKey) {
+    if (token && safeCompare(token, expectedApiKey)) {
       return true;
     }
   }
@@ -51,10 +72,16 @@ export function checkAuth(
   return false;
 }
 
+export interface ExtractCredentialsOptions {
+  allowEnvFallback?: boolean;
+}
+
 export function extractPlankaCredentials(
   req: http.IncomingMessage,
   parsedUrl: URL,
+  options?: ExtractCredentialsOptions,
 ): PlankaAuthContext | null {
+  const allowEnvFallback = options?.allowEnvFallback ?? true;
   let email: string | undefined;
   let password: string | undefined;
   let token: string | undefined;
@@ -79,7 +106,7 @@ export function extractPlankaCredentials(
   }
 
   const headerBaseUrl = req.headers["x-planka-base-url"];
-  if (typeof headerBaseUrl === "string" && headerBaseUrl.trim()) {
+  if (typeof headerBaseUrl === "string" && headerBaseUrl.trim() && isValidBaseUrl(headerBaseUrl.trim())) {
     baseUrl = headerBaseUrl.trim();
   }
 
@@ -129,7 +156,7 @@ export function extractPlankaCredentials(
   const qBaseUrl =
     parsedUrl.searchParams.get("baseUrl") ||
     parsedUrl.searchParams.get("plankaBaseUrl");
-  if (qBaseUrl && qBaseUrl.trim()) {
+  if (qBaseUrl && qBaseUrl.trim() && isValidBaseUrl(qBaseUrl.trim())) {
     baseUrl = qBaseUrl.trim();
   }
 
@@ -140,15 +167,17 @@ export function extractPlankaCredentials(
     ignoreSsl = qIgnoreSsl === "true";
   }
 
-  // 4. Fallback to process.env if available (for backwards compatibility / single-tenant setups)
-  if (!email && process.env.PLANKA_AGENT_EMAIL) {
-    email = process.env.PLANKA_AGENT_EMAIL;
-  }
-  if (!password && process.env.PLANKA_AGENT_PASSWORD) {
-    password = process.env.PLANKA_AGENT_PASSWORD;
-  }
-  if (!baseUrl && process.env.PLANKA_BASE_URL) {
-    baseUrl = process.env.PLANKA_BASE_URL;
+  // 4. Fallback to process.env if explicitly permitted (e.g. valid gateway API key or single-tenant stdio)
+  if (allowEnvFallback) {
+    if (!email && process.env.PLANKA_AGENT_EMAIL) {
+      email = process.env.PLANKA_AGENT_EMAIL;
+    }
+    if (!password && process.env.PLANKA_AGENT_PASSWORD) {
+      password = process.env.PLANKA_AGENT_PASSWORD;
+    }
+    if (!baseUrl && process.env.PLANKA_BASE_URL) {
+      baseUrl = process.env.PLANKA_BASE_URL;
+    }
   }
 
   // If neither credentials nor token are available, return null
@@ -178,6 +207,20 @@ export function setCorsHeaders(res: http.ServerResponse): void {
   );
 }
 
+export function sanitizeUrlForLogging(rawUrl: string): string {
+  try {
+    const parsed = new URL(rawUrl, "http://localhost");
+    for (const param of ["password", "plankaPassword", "token", "plankaToken", "apiKey", "jwt"]) {
+      if (parsed.searchParams.has(param)) {
+        parsed.searchParams.set(param, "******");
+      }
+    }
+    return parsed.pathname + parsed.search;
+  } catch {
+    return rawUrl.split("?")[0];
+  }
+}
+
 export function createHttpServer(options: HttpServerOptions): {
   server: http.Server;
   sessions: Map<string, ActiveSession>;
@@ -200,7 +243,7 @@ export function createHttpServer(options: HttpServerOptions): {
         req.headers["accept"] = "application/json, text/event-stream";
       }
 
-      console.log(`[HTTP ${req.method}] ${req.url} (Accept: ${req.headers["accept"]})`);
+      console.log(`[HTTP ${req.method}] ${sanitizeUrlForLogging(req.url || "/")} (Accept: ${req.headers["accept"]})`);
 
       if (req.method === "OPTIONS") {
         res.writeHead(204);
@@ -284,16 +327,23 @@ export function createHttpServer(options: HttpServerOptions): {
         return;
       }
 
+      const isGatewayAuthenticated = Boolean(apiKey && checkAuth(req, apiKey, parsedUrl));
+      const allowEnvFallback = Boolean(
+        isGatewayAuthenticated ||
+        process.env.ALLOW_ANONYMOUS_ENV_FALLBACK === "true"
+      );
+
       // 4. Legacy SSE Connection Handshake (GET /sse)
       if (req.method === "GET" && pathname === "/sse") {
-        const plankaContext = extractPlankaCredentials(req, parsedUrl);
+        const plankaContext = extractPlankaCredentials(req, parsedUrl, { allowEnvFallback });
         if (!plankaContext) {
           res.writeHead(401, { "Content-Type": "application/json" });
           res.end(
             JSON.stringify({
               error: "MissingCredentials",
-              message:
-                "Planka credentials required. Provide them via headers (X-Planka-Email, X-Planka-Password) or query parameters (?email=...&password=...).",
+              message: allowEnvFallback
+                ? "Planka credentials required. Provide them via headers (X-Planka-Email, X-Planka-Password) or query parameters (?email=...&password=...)."
+                : "Planka credentials required. Anonymous access cannot use default server environment credentials. Provide them via headers (X-Planka-Email, X-Planka-Password), query parameters, or configure MCP_API_KEY.",
             }),
           );
           return;
@@ -352,14 +402,15 @@ export function createHttpServer(options: HttpServerOptions): {
         req.method === "POST" &&
         (pathname === "/sse" || pathname === "/mcp" || pathname === "/")
       ) {
-        const plankaContext = extractPlankaCredentials(req, parsedUrl);
+        const plankaContext = extractPlankaCredentials(req, parsedUrl, { allowEnvFallback });
         if (!plankaContext) {
           res.writeHead(401, { "Content-Type": "application/json" });
           res.end(
             JSON.stringify({
               error: "MissingCredentials",
-              message:
-                "Planka credentials required. Provide them via headers or query parameters.",
+              message: allowEnvFallback
+                ? "Planka credentials required. Provide them via headers or query parameters."
+                : "Planka credentials required. Anonymous access cannot use default server environment credentials. Provide them via headers, query parameters, or configure MCP_API_KEY.",
             }),
           );
           return;

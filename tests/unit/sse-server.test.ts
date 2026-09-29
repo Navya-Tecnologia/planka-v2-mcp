@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "@jest/globals";
 import http from "node:http";
 import { parseCliArgs } from "../../index.js";
-import { checkAuth, createHttpServer } from "../../transport/httpServer.js";
+import { checkAuth, createHttpServer, sanitizeUrlForLogging } from "../../transport/httpServer.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 describe("CLI Argument Parser", () => {
@@ -51,6 +51,25 @@ describe("CLI Argument Parser", () => {
   });
 });
 
+describe("URL Logging Sanitization", () => {
+  it("should mask sensitive credentials in URL query parameters", () => {
+    const raw = "/sse?password=supersecret&token=jwt.token.here&apiKey=key123&user=admin";
+    const sanitized = sanitizeUrlForLogging(raw);
+    expect(sanitized).toContain("password=******");
+    expect(sanitized).toContain("token=******");
+    expect(sanitized).toContain("apiKey=******");
+    expect(sanitized).toContain("user=admin");
+    expect(sanitized).not.toContain("supersecret");
+    expect(sanitized).not.toContain("jwt.token.here");
+    expect(sanitized).not.toContain("key123");
+  });
+
+  it("should handle URLs without query parameters cleanly", () => {
+    expect(sanitizeUrlForLogging("/health")).toBe("/health");
+    expect(sanitizeUrlForLogging("/mcp")).toBe("/mcp");
+  });
+});
+
 describe("HTTP SSE Authentication Logic", () => {
   it("should allow any request if expectedApiKey is undefined", () => {
     const mockReq = { headers: {} } as http.IncomingMessage;
@@ -76,6 +95,13 @@ describe("HTTP SSE Authentication Logic", () => {
     expect(checkAuth(mockReq, "secret-123")).toBe(false);
   });
 
+  it("should reject different length authorization keys without timing leak or crashing", () => {
+    const mockReq = {
+      headers: { authorization: "Bearer short" },
+    } as unknown as http.IncomingMessage;
+    expect(checkAuth(mockReq, "very-long-secret-key-12345")).toBe(false);
+  });
+
   it("should accept valid token in URL search parameters", () => {
     const mockReq = { headers: {} } as http.IncomingMessage;
     const url = new URL("http://localhost:3000/sse?token=secret-123");
@@ -92,6 +118,7 @@ describe("HTTP SSE Authentication Logic", () => {
 describe("HTTP Server Endpoints", () => {
   let server: http.Server;
   let port: number;
+  const originalEnv = process.env;
 
   function mockServerFactory(): McpServer {
     return new McpServer({
@@ -133,7 +160,12 @@ describe("HTTP Server Endpoints", () => {
     });
   }
 
+  beforeEach(() => {
+    process.env = { ...originalEnv };
+  });
+
   afterEach(async () => {
+    process.env = originalEnv;
     if (server && server.listening) {
       if (typeof server.closeAllConnections === "function") {
         server.closeAllConnections();
@@ -218,5 +250,59 @@ describe("HTTP Server Endpoints", () => {
       authorization: "Bearer my-secure-key",
     });
     expect(notFoundSessionRes.status).toBe(404);
+  });
+
+  it("should reject anonymous requests to /sse with 401 MissingCredentials even if server has env credentials", async () => {
+    process.env.PLANKA_AGENT_EMAIL = "secret-agent@company.com";
+    process.env.PLANKA_AGENT_PASSWORD = "secret-password";
+    process.env.PLANKA_BASE_URL = "http://localhost:3333";
+
+    const httpSetup = createHttpServer({
+      serverFactory: mockServerFactory,
+    });
+    server = httpSetup.server;
+
+    await new Promise<void>((resolve) => {
+      server.listen(0, "127.0.0.1", () => {
+        const addr = server.address();
+        if (typeof addr === "object" && addr) {
+          port = addr.port;
+        }
+        resolve();
+      });
+    });
+
+    const res = await makeRequest("GET", "/sse");
+    expect(res.status).toBe(401);
+    const body = JSON.parse(res.body);
+    expect(body.error).toBe("MissingCredentials");
+    expect(body.message).toContain("Anonymous access cannot use default server environment credentials");
+  });
+
+  it("should reject anonymous POST requests to /mcp with 401 MissingCredentials even if server has env credentials", async () => {
+    process.env.PLANKA_AGENT_EMAIL = "secret-agent@company.com";
+    process.env.PLANKA_AGENT_PASSWORD = "secret-password";
+    process.env.PLANKA_BASE_URL = "http://localhost:3333";
+
+    const httpSetup = createHttpServer({
+      serverFactory: mockServerFactory,
+    });
+    server = httpSetup.server;
+
+    await new Promise<void>((resolve) => {
+      server.listen(0, "127.0.0.1", () => {
+        const addr = server.address();
+        if (typeof addr === "object" && addr) {
+          port = addr.port;
+        }
+        resolve();
+      });
+    });
+
+    const res = await makeRequest("POST", "/mcp");
+    expect(res.status).toBe(401);
+    const body = JSON.parse(res.body);
+    expect(body.error).toBe("MissingCredentials");
+    expect(body.message).toContain("Anonymous access cannot use default server environment credentials");
   });
 });

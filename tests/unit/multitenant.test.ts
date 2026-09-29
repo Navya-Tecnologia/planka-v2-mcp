@@ -80,19 +80,48 @@ describe("Multi-tenant Planka Credential Extraction", () => {
     expect(creds?.token).toBe("eyJhbGciOi...");
   });
 
-  it("should fall back to environment variables when request has no credentials", () => {
+  it("should fall back to environment variables when request has no credentials and fallback is enabled", () => {
     process.env.PLANKA_AGENT_EMAIL = "env-agent@company.com";
     process.env.PLANKA_AGENT_PASSWORD = "env-password";
     process.env.PLANKA_BASE_URL = "http://localhost:3333";
 
     const mockReq = { headers: {} } as unknown as http.IncomingMessage;
     const url = new URL("http://localhost:3000/sse");
-    const creds = extractPlankaCredentials(mockReq, url);
+    const creds = extractPlankaCredentials(mockReq, url, { allowEnvFallback: true });
 
     expect(creds).not.toBeNull();
     expect(creds?.email).toBe("env-agent@company.com");
     expect(creds?.password).toBe("env-password");
     expect(creds?.baseUrl).toBe("http://localhost:3333");
+  });
+
+  it("should not fall back to environment variables when allowEnvFallback is false", () => {
+    process.env.PLANKA_AGENT_EMAIL = "env-agent@company.com";
+    process.env.PLANKA_AGENT_PASSWORD = "env-password";
+    process.env.PLANKA_BASE_URL = "http://localhost:3333";
+
+    const mockReq = { headers: {} } as unknown as http.IncomingMessage;
+    const url = new URL("http://localhost:3000/sse");
+    const creds = extractPlankaCredentials(mockReq, url, { allowEnvFallback: false });
+
+    expect(creds).toBeNull();
+  });
+
+  it("should ignore invalid or cloud metadata URLs in x-planka-base-url header (SSRF protection)", () => {
+    const mockReq = {
+      headers: {
+        "x-planka-email": "alice@company.com",
+        "x-planka-password": "alice-password",
+        "x-planka-base-url": "http://169.254.169.254/latest/meta-data/",
+      },
+    } as unknown as http.IncomingMessage;
+
+    const url = new URL("http://localhost:3000/sse");
+    const creds = extractPlankaCredentials(mockReq, url);
+
+    expect(creds).not.toBeNull();
+    expect(creds?.baseUrl).toBe("http://localhost:3000");
+    expect(creds?.baseUrl).not.toContain("169.254.169.254");
   });
 
   it("should return null when neither request nor env contains credentials", () => {
