@@ -1,8 +1,11 @@
+version: '3.8'
+
 services:
   planka-mcp:
-    container_name: ${CONTAINER_NAME:-planka-mcp}
-    image: ghcr.io/navya-tecnologia/planka-v2-mcp:latest
-    pull_policy: always
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: planka-mcp
     restart: unless-stopped
     ports:
       - "${MCP_PORT:-3000}:3000"
@@ -23,18 +26,11 @@ services:
       - planka-attachments:/app/attachments
       - ${PRIVATE_SKILLS_PATH:-/docker/planka-mcp/docs/private}:/app/docs/private:ro
     networks:
-      - mcp-network
-    healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+      - net_mcp
 
 volumes:
   planka-attachments:
 
 networks:
-  mcp-network:
-    name: ${MCP_NETWORK:-net_mcp}
+  net_mcp:
     external: true
