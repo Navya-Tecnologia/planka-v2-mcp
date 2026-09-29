@@ -1,11 +1,8 @@
 services:
   planka-mcp:
     container_name: ${CONTAINER_NAME:-planka-mcp}
-    image: ${IMAGE_NAME:-planka-mcp:latest}
-    build:
-      context: .
-      dockerfile: Dockerfile
-    pull_policy: build
+    image: ghcr.io/navya-tecnologia/planka-v2-mcp:latest
+    pull_policy: always
     restart: unless-stopped
     ports:
       - "${MCP_PORT:-3000}:3000"
