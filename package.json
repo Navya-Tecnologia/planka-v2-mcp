@@ -16,16 +16,19 @@
   },
   "files": [
     "dist",
+    "docs",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
     "build": "tsc && shx chmod +x dist/*.js",
     "watch": "tsc --watch",
-    "up": "docker compose --env-file .env up -d",
-    "down": "docker compose down",
-    "restart": "docker compose --env-file .env restart",
-    "build-docker": "npm run build && docker build -t mcp-kanban:latest .",
+    "up": "docker compose -f docker-compose.dev.yml up -d",
+    "down": "docker compose -f docker-compose.dev.yml down",
+    "restart": "docker compose -f docker-compose.dev.yml restart",
+    "up:prod": "docker compose up -d",
+    "down:prod": "docker compose down",
+    "build-docker": "docker build -t planka-mcp:latest .",
     "start-node": "node dist/index.js",
     "start:sse": "node dist/index.js --transport sse",
     "inspector": "SERVER_PORT=3008 CLIENT_PORT=5174 npx -y @modelcontextprotocol/inspector node dist/index.js",

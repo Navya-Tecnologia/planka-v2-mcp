@@ -7,3 +7,8 @@ node_modules/
 .agent/
 *swagger.json
 *.tgz
+
+# Private skills and internal business documentation
+docs/hermes-planka-SKILL.md
+docs/private/
+*.private.md

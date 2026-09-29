@@ -13,6 +13,7 @@ COPY common ./common
 COPY operations ./operations
 COPY tools ./tools
 COPY transport ./transport
+COPY docs ./docs
 COPY index.ts ./
 
 # Build TypeScript to dist/
@@ -32,8 +33,9 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
-# Copy compiled artifacts from builder
+# Copy compiled artifacts and docs from builder
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/docs ./docs
 
 # Create directory for attachments with node user permissions
 RUN mkdir -p /app/attachments && chown -R node:node /app

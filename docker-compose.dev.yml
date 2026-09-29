@@ -1,0 +1,21 @@
+services:
+  planka-mcp:
+    container_name: planka-mcp-dev
+    image: planka-mcp:dev
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${MCP_PORT:-3001}:3000"
+    environment:
+      - NODE_ENV=development
+      - MCP_TRANSPORT=sse
+      - PORT=3000
+      - HOST=0.0.0.0
+      - PLANKA_IGNORE_SSL=${PLANKA_IGNORE_SSL:-true}
+    volumes:
+      - ./docs:/app/docs
+      - ./attachments:/app/attachments

@@ -1,0 +1,33 @@
+services:
+  planka-mcp:
+    container_name: planka-mcp
+    image: planka-mcp:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${MCP_PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - MCP_TRANSPORT=sse
+      - PORT=3000
+      - HOST=0.0.0.0
+      - PLANKA_BASE_URL=${PLANKA_BASE_URL}
+      - PLANKA_AGENT_EMAIL=${PLANKA_AGENT_EMAIL}
+      - PLANKA_AGENT_PASSWORD=${PLANKA_AGENT_PASSWORD}
+      - PLANKA_IGNORE_SSL=${PLANKA_IGNORE_SSL:-false}
+      - MCP_API_KEY=${MCP_API_KEY:-}
+      - MCP_SKILL_FILE_PATH=${MCP_SKILL_FILE_PATH:-/app/docs/private/satya-planka-skill.md}
+    volumes:
+      - planka-attachments:/app/attachments
+      - ${PRIVATE_SKILLS_PATH:-/docker/planka-mcp/docs/private}:/app/docs/private:ro
+    networks:
+      - net_mcp
+
+volumes:
+  planka-attachments:
+
+networks:
+  net_mcp:
+    external: true

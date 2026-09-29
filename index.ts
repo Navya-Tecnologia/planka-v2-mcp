@@ -30,6 +30,7 @@ import {
 import { VERSION } from "./common/version.js";
 import { startHttpSseServer } from "./transport/httpServer.js";
 import { PlankaAuthContext } from "./common/context.js";
+import { getPlankaServerInstructions, registerPlankaSkills } from "./common/skills.js";
 
 export function createKanbanServer(sessionContext?: PlankaAuthContext): McpServer {
   const server = new McpServer(
@@ -40,9 +41,15 @@ export function createKanbanServer(sessionContext?: PlankaAuthContext): McpServe
     {
       capabilities: {
         tools: {},
+        prompts: {},
+        resources: {},
       },
+      instructions: getPlankaServerInstructions(),
     }
   );
+
+  // Register embedded Planka skill resources and workflow prompts
+  registerPlankaSkills(server);
 
   // ----- CONSOLIDATED KANBAN TOOLS -----
 

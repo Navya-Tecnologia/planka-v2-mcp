@@ -129,10 +129,12 @@ X-Planka-Base-Url: https://planka.yourdomain.com
 http://your-mcp-server:3000/sse?email=developer@yourdomain.com&password=secretPassword&baseUrl=https://planka.yourdomain.com
 ```
 
-#### Endpoints
-- `GET /sse`: Establishes the persistent SSE stream and initializes user session.
-- `POST /messages?sessionId=...`: Receives client JSON-RPC tool calls.
-- `GET /health`: Healthcheck endpoint (`200 OK`).
+#### Endpoints & Protocols
+The server natively supports both modern **Streamable HTTP Transport** and **Legacy SSE Transport**:
+- `POST /sse`, `POST /mcp`, `POST /`: Streamable HTTP handshake & JSON-RPC calls with `Mcp-Session-Id` header session management.
+- `GET /sse`: Legacy SSE persistent stream handshake.
+- `POST /messages?sessionId=...`: Legacy SSE client message endpoint.
+- `GET /health` or `GET /`: Healthcheck & server info endpoint (`200 OK`).
 
 ---
 
@@ -142,17 +144,134 @@ The container image is published to **GitHub Container Registry (GHCR)**:
 
 ```bash
 # Multi-user mode (credentials supplied dynamically by connecting clients)
-docker run -d -p 3000:3000 \
+docker run -d -p 3001:3000 \
   -e PLANKA_BASE_URL="http://your-planka-instance:3333" \
   -e MCP_API_KEY="optional-gateway-bearer-token" \
   ghcr.io/navya-tecnologia/planka-v2-mcp:latest
 
 # Or single-user mode (fallback credentials in container)
-docker run -d -p 3000:3000 \
+docker run -d -p 3001:3000 \
   -e PLANKA_BASE_URL="http://your-planka-instance:3333" \
   -e PLANKA_AGENT_EMAIL="bot@yourdomain.com" \
   -e PLANKA_AGENT_PASSWORD="botPassword" \
   ghcr.io/navya-tecnologia/planka-v2-mcp:latest
+```
+
+---
+
+### 5. Client Integration Configurations
+
+#### A. Antigravity IDE
+Configure the MCP server in `~/.gemini/config/mcp_config.json` (or `.agent/mcp_config.json` in your workspace):
+
+**Remote Container / HTTP SSE Mode (Recommended):**
+```json
+{
+  "mcpServers": {
+    "planka-mcp": {
+      "serverUrl": "http://127.0.0.1:3001/sse"
+    }
+  }
+}
+```
+
+**Local Stdio Mode:**
+```json
+{
+  "mcpServers": {
+    "planka-mcp": {
+      "command": "node",
+      "args": ["c:/path/to/kanban-mcp/dist/index.js"],
+      "env": {
+        "PLANKA_BASE_URL": "http://your-planka-instance:3333",
+        "PLANKA_AGENT_EMAIL": "agent@yourdomain.com",
+        "PLANKA_AGENT_PASSWORD": "your-password"
+      }
+    }
+  }
+}
+```
+
+---
+
+#### B. Claude Desktop
+Edit your Claude Desktop configuration file (`%APPDATA%\Claude\claude_desktop_config.json` on Windows, `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+
+**Remote Container / HTTP SSE Mode (via `mcp-remote` bridge):**
+```json
+{
+  "mcpServers": {
+    "planka-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "http://127.0.0.1:3001/sse"
+      ]
+    }
+  }
+}
+```
+
+**Local Stdio Mode:**
+```json
+{
+  "mcpServers": {
+    "planka-mcp": {
+      "command": "npx",
+      "args": ["-y", "@navyatec/planka-v2-mcp@latest"],
+      "env": {
+        "PLANKA_BASE_URL": "http://your-planka-instance:3333",
+        "PLANKA_AGENT_EMAIL": "agent@yourdomain.com",
+        "PLANKA_AGENT_PASSWORD": "your-password"
+      }
+    }
+  }
+}
+```
+
+---
+
+#### C. Claude Code (Terminal CLI)
+You can attach the server globally or locally using the CLI:
+
+```bash
+# Add globally for all projects:
+claude mcp add -s user planka-mcp http://127.0.0.1:3001/sse
+
+# Or add to current project:
+claude mcp add planka-mcp http://127.0.0.1:3001/sse
+```
+
+Or configure `.mcp.json` in your project root:
+```json
+{
+  "mcpServers": {
+    "planka-mcp": {
+      "type": "sse",
+      "url": "http://127.0.0.1:3001/sse"
+    }
+  }
+}
+```
+
+---
+
+#### D. Cursor IDE
+In Cursor **Settings > Features > MCP**, click **Add New MCP Server**:
+- **Name:** `planka-mcp`
+- **Type:** `sse`
+- **Server URL:** `http://127.0.0.1:3001/sse`
+
+Or in `.cursor/mcp.json`:
+```json
+{
+  "mcpServers": {
+    "planka-mcp": {
+      "url": "http://127.0.0.1:3001/sse"
+    }
+  }
+}
 ```
 
 ---
