@@ -9,7 +9,9 @@ import {
   PlankaAuthContext,
   runWithPlankaContext,
 } from "../common/context.js";
-import { authenticatePlankaUser } from "../common/utils.js";
+import { authenticatePlankaUser, isValidBaseUrl } from "../common/utils.js";
+
+export { isValidBaseUrl };
 
 export interface HttpServerOptions {
   port?: number;
@@ -30,19 +32,6 @@ function safeCompare(a?: string, b?: string): boolean {
   const bufB = Buffer.from(b);
   if (bufA.length !== bufB.length) return false;
   return timingSafeEqual(bufA, bufB);
-}
-
-function isValidBaseUrl(urlStr: string): boolean {
-  try {
-    const u = new URL(urlStr);
-    if (u.protocol !== "http:" && u.protocol !== "https:") return false;
-    const hostname = u.hostname.toLowerCase();
-    // Block cloud metadata service IP/hostnames
-    if (hostname === "169.254.169.254" || hostname === "metadata.google.internal") return false;
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 export function checkAuth(
@@ -207,12 +196,29 @@ export function setCorsHeaders(res: http.ServerResponse): void {
   );
 }
 
+const SENSITIVE_PARAM_NAMES = new Set([
+  "password",
+  "plankapassword",
+  "token",
+  "plankatoken",
+  "apikey",
+  "api_key",
+  "jwt",
+  "secret",
+  "authorization",
+  "auth",
+  "access_token",
+]);
+
 export function sanitizeUrlForLogging(rawUrl: string): string {
   try {
     const parsed = new URL(rawUrl, "http://localhost");
-    for (const param of ["password", "plankaPassword", "token", "plankaToken", "apiKey", "jwt"]) {
-      if (parsed.searchParams.has(param)) {
-        parsed.searchParams.set(param, "******");
+    if (parsed.password) {
+      parsed.password = "******";
+    }
+    for (const [key] of parsed.searchParams) {
+      if (SENSITIVE_PARAM_NAMES.has(key.toLowerCase())) {
+        parsed.searchParams.set(key, "******");
       }
     }
     return parsed.pathname + parsed.search;

@@ -58,6 +58,68 @@ export function buildUrl(
   return url.toString();
 }
 
+/**
+ * Validates a Planka base URL against SSRF and network-level threats.
+ * - Enforces http: or https: protocol
+ * - Disallows user credentials in URL (user:pass@host)
+ * - Prohibits cloud metadata IP addresses (169.254.0.0/16 IPv4 Link-Local, Alibaba 100.100.100.200, Oracle 192.0.0.192)
+ * - Prohibits cloud metadata hostnames (metadata.google.internal, instance-data, metadata)
+ * - Prohibits IPv6 link-local (fe80::) and cloud metadata (fd00:ec2::254)
+ * - Enforces optional PLANKA_ALLOWED_HOSTS whitelist if defined
+ */
+export function isValidBaseUrl(urlStr: string): boolean {
+  if (!urlStr || typeof urlStr !== "string") return false;
+  try {
+    const u = new URL(urlStr);
+    if (u.protocol !== "http:" && u.protocol !== "https:") return false;
+
+    // Disallow embedded userinfo (e.g. http://attacker:pass@internal-host)
+    if (u.username || u.password) return false;
+
+    const hostname = u.hostname.toLowerCase();
+    if (!hostname) return false;
+
+    // 1. Prohibit known cloud metadata hostnames & short aliases
+    const prohibitedHostnames = new Set([
+      "metadata.google.internal",
+      "metadata",
+      "instance-data",
+    ]);
+    if (prohibitedHostnames.has(hostname)) return false;
+
+    // 2. Prohibit IPv4 Link-Local / Cloud Metadata (169.254.0.0/16, Alibaba 100.100.100.200, Oracle 192.0.0.192)
+    if (
+      hostname.startsWith("169.254.") ||
+      hostname === "100.100.100.200" ||
+      hostname === "192.0.0.192"
+    ) {
+      return false;
+    }
+
+    // 3. Prohibit IPv6 Link-Local and Cloud Metadata
+    const cleanHost = hostname.replace(/^\[|\]$/g, "");
+    if (cleanHost.startsWith("fe80:") || cleanHost.startsWith("fd00:ec2:")) {
+      return false;
+    }
+
+    // 4. Enforce PLANKA_ALLOWED_HOSTS allowlist if configured by administrator
+    const allowedHostsEnv = process.env.PLANKA_ALLOWED_HOSTS;
+    if (allowedHostsEnv) {
+      const allowedHosts = allowedHostsEnv
+        .split(",")
+        .map((h) => h.trim().toLowerCase())
+        .filter(Boolean);
+      if (allowedHosts.length > 0 && !allowedHosts.includes(hostname)) {
+        return false;
+      }
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const USER_AGENT =
   `modelcontextprotocol/servers/planka/v${VERSION} ${getUserAgent()}`;
 
@@ -72,6 +134,12 @@ export async function authenticatePlankaUser(
   const email = context.email || process.env.PLANKA_AGENT_EMAIL;
   const password = context.password || process.env.PLANKA_AGENT_PASSWORD;
   const baseUrl = context.baseUrl || process.env.PLANKA_BASE_URL || "http://localhost:3000";
+
+  if (!isValidBaseUrl(baseUrl)) {
+    throw new Error(
+      `Security violation: Invalid or prohibited baseUrl (SSRF protection): ${baseUrl}`,
+    );
+  }
 
   if (!email || !password) {
     throw new Error(
@@ -150,6 +218,12 @@ export async function plankaRequest(
 ): Promise<unknown> {
   const context = getActivePlankaContext();
   const baseUrl = context?.baseUrl || process.env.PLANKA_BASE_URL || "http://localhost:3000";
+
+  if (!isValidBaseUrl(baseUrl)) {
+    throw new Error(
+      `Security violation: Invalid or prohibited baseUrl (SSRF protection): ${baseUrl}`,
+    );
+  }
 
   // Normalize the base URL to not end with /api
   const normalizedBaseUrl = baseUrl.endsWith("/api")

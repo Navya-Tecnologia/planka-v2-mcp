@@ -7,7 +7,7 @@ import {
   PlankaAuthContext,
 } from "../../common/context.js";
 import { extractPlankaCredentials } from "../../transport/httpServer.js";
-import { getAuthToken } from "../../common/utils.js";
+import { getAuthToken, authenticatePlankaUser, plankaRequest } from "../../common/utils.js";
 import { getAdminUserId } from "../../common/setup.js";
 
 describe("Multi-tenant Planka Credential Extraction", () => {
@@ -176,5 +176,31 @@ describe("Multi-tenant Session Isolation with AsyncLocalStorage", () => {
 
     expect(resAlice).toBe("jwt-token-alice");
     expect(resBob).toBe("jwt-token-bob");
+  });
+});
+
+describe("SSRF Protection in Planka API Request Execution", () => {
+  it("should throw a security violation in authenticatePlankaUser when baseUrl points to cloud metadata", async () => {
+    const maliciousContext: PlankaAuthContext = {
+      email: "test@example.com",
+      password: "password123",
+      baseUrl: "http://169.254.169.254/latest/meta-data/",
+    };
+    await expect(authenticatePlankaUser(maliciousContext)).rejects.toThrow(
+      "Security violation: Invalid or prohibited baseUrl",
+    );
+  });
+
+  it("should throw a security violation in plankaRequest when baseUrl points to prohibited metadata", async () => {
+    const maliciousContext: PlankaAuthContext = {
+      email: "test@example.com",
+      password: "password123",
+      baseUrl: "http://metadata.google.internal",
+    };
+    await expect(
+      runWithPlankaContext(maliciousContext, async () => {
+        return plankaRequest("cards");
+      }),
+    ).rejects.toThrow("Security violation: Invalid or prohibited baseUrl");
   });
 });

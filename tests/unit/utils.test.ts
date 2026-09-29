@@ -1,5 +1,4 @@
-import { describe, expect, it } from "@jest/globals";
-import { sanitizeId, buildUrl } from "../../common/utils.js";
+import { sanitizeId, buildUrl, isValidBaseUrl } from "../../common/utils.js";
 import {
   createPlankaError,
   PlankaAuthenticationError,
@@ -57,6 +56,59 @@ describe("common/utils: buildUrl", () => {
       perPage: undefined,
     });
     expect(url).toBe("http://localhost:3000/api/users?page=2");
+  });
+});
+
+describe("common/utils: isValidBaseUrl (SSRF Protection)", () => {
+  const originalEnv = process.env;
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  it("should accept valid http and https URLs", () => {
+    expect(isValidBaseUrl("http://localhost:3000")).toBe(true);
+    expect(isValidBaseUrl("https://planka.mycompany.com")).toBe(true);
+    expect(isValidBaseUrl("http://planka:1337")).toBe(true);
+  });
+
+  it("should reject invalid protocols and malformed URLs", () => {
+    expect(isValidBaseUrl("ftp://planka.com")).toBe(false);
+    expect(isValidBaseUrl("javascript:alert(1)")).toBe(false);
+    expect(isValidBaseUrl("file:///etc/passwd")).toBe(false);
+    expect(isValidBaseUrl("not-a-valid-url")).toBe(false);
+    expect(isValidBaseUrl("")).toBe(false);
+  });
+
+  it("should reject URLs containing userinfo", () => {
+    expect(isValidBaseUrl("http://user:pass@planka.com")).toBe(false);
+  });
+
+  it("should reject cloud metadata IPv4 addresses and Link-Local subnet", () => {
+    expect(isValidBaseUrl("http://169.254.169.254")).toBe(false);
+    expect(isValidBaseUrl("http://169.254.1.1")).toBe(false);
+    expect(isValidBaseUrl("http://2852039166")).toBe(false); // decimal 169.254.169.254
+    expect(isValidBaseUrl("http://0xa9fea9fe")).toBe(false); // hex 169.254.169.254
+    expect(isValidBaseUrl("http://100.100.100.200")).toBe(false); // Alibaba metadata
+    expect(isValidBaseUrl("http://192.0.0.192")).toBe(false); // Oracle metadata
+  });
+
+  it("should reject cloud metadata hostnames", () => {
+    expect(isValidBaseUrl("http://metadata.google.internal")).toBe(false);
+    expect(isValidBaseUrl("http://metadata")).toBe(false);
+    expect(isValidBaseUrl("http://instance-data")).toBe(false);
+  });
+
+  it("should reject IPv6 link-local and cloud metadata", () => {
+    expect(isValidBaseUrl("http://[fe80::1]")).toBe(false);
+    expect(isValidBaseUrl("http://[fd00:ec2::254]")).toBe(false);
+  });
+
+  it("should enforce PLANKA_ALLOWED_HOSTS whitelist when configured", () => {
+    process.env = { ...originalEnv, PLANKA_ALLOWED_HOSTS: "tasks.internal, planka.corp.com" };
+    expect(isValidBaseUrl("https://tasks.internal")).toBe(true);
+    expect(isValidBaseUrl("https://planka.corp.com")).toBe(true);
+    expect(isValidBaseUrl("https://evil.external.com")).toBe(false);
   });
 });
 

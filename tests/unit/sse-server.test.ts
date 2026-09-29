@@ -64,6 +64,19 @@ describe("URL Logging Sanitization", () => {
     expect(sanitized).not.toContain("key123");
   });
 
+  it("should mask case-insensitive sensitive parameter names and auth tokens", () => {
+    const raw = "/sse?PASSWORD=secret1&Token=secret2&API_KEY=secret3&access_token=secret4";
+    const sanitized = sanitizeUrlForLogging(raw);
+    expect(sanitized).toContain("PASSWORD=******");
+    expect(sanitized).toContain("Token=******");
+    expect(sanitized).toContain("API_KEY=******");
+    expect(sanitized).toContain("access_token=******");
+    expect(sanitized).not.toContain("secret1");
+    expect(sanitized).not.toContain("secret2");
+    expect(sanitized).not.toContain("secret3");
+    expect(sanitized).not.toContain("secret4");
+  });
+
   it("should handle URLs without query parameters cleanly", () => {
     expect(sanitizeUrlForLogging("/health")).toBe("/health");
     expect(sanitizeUrlForLogging("/mcp")).toBe("/mcp");
