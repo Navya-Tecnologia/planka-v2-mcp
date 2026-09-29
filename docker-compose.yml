@@ -21,15 +21,9 @@ services:
       - PLANKA_ALLOWED_HOSTS=${PLANKA_ALLOWED_HOSTS:-}
       - ALLOW_ANONYMOUS_ENV_FALLBACK=${ALLOW_ANONYMOUS_ENV_FALLBACK:-true}
       - MCP_API_KEY=${MCP_API_KEY:-}
-      - MCP_SKILL_FILE_PATH=${MCP_SKILL_FILE_PATH:-/app/docs/private/satya-planka-skill.md}
-    volumes:
-      - planka-attachments:/app/attachments
-      - ${PRIVATE_SKILLS_PATH:-/docker/planka-mcp/docs/private}:/app/docs/private:ro
+      - MCP_SKILL_FILE_PATH=${MCP_SKILL_FILE_PATH:-/app/docs/skills/planka-kanban-skill.md}
     networks:
       - net_mcp
-
-volumes:
-  planka-attachments:
 
 networks:
   net_mcp:
